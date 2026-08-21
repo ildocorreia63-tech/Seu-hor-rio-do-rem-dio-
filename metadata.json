@@ -1,0 +1,6 @@
+{
+  "name": "Seu Horário do Remédio - SaaS",
+  "description": "Aplicativo Micro-SaaS multiusuário de lembrete de medicamentos, alarme em tela cheia, controle familiar, estoque e pagamentos Stripe.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

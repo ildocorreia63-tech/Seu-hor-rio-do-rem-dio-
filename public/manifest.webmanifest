@@ -1,0 +1,24 @@
+{
+  "name": "Seu Horário do Remédio - SaaS",
+  "short_name": "Meu Remédio",
+  "description": "Lembrete de medicamentos com alarme sonoro em tela cheia, fotos, receitas e controle familiar.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f766e",
+  "theme_color": "#0f766e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
