@@ -25,13 +25,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
 
-      - name: Build React Client with Vite
-        run: npx vite build
+      - name: Build React App with Vite
+        run: npm run build
 
       - name: Copy index.html to 404.html for SPA routing
         run: cp dist/index.html dist/404.html
