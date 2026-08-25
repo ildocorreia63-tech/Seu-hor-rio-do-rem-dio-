@@ -90,7 +90,7 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
           accountType
         );
       } else {
-        await onLogin(email.trim().toLowerCase(), password);
+        await onLogin(email.trim().toLowerCase(), password.trim());
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao processar. Verifique os dados e tente novamente.');

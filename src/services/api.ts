@@ -169,17 +169,20 @@ class ApiService {
       if (!email || !password) {
         throw new Error('E-mail e senha são obrigatórios');
       }
+
+      const isIldo = email.trim().toLowerCase() === 'ildocorreia63@gmail.com';
       const user: User = {
-        id: `user-local-${Date.now()}`,
-        name: email.split('@')[0],
-        email: email,
-        role: 'user',
-        plan: 'free',
-        subscriptionStatus: 'none',
-        accountType: 'personal',
+        id: isIldo ? 'user-admin-ildo' : `user-local-${Date.now()}`,
+        name: isIldo ? 'Ildo Correia de Lima' : email.split('@')[0],
+        email: email.trim().toLowerCase(),
+        role: isIldo || email.toLowerCase().includes('admin') ? 'admin' : 'user',
+        plan: isIldo ? 'family' : 'free',
+        subscriptionStatus: isIldo ? 'active' : 'none',
+        accountType: isIldo ? 'clinic' : 'personal',
+        organizationName: isIldo ? 'Administração Central SaaS' : undefined,
         createdAt: new Date().toISOString(),
-        maxMeds: 2,
-        maxMembers: 1,
+        maxMeds: isIldo ? 999 : 2,
+        maxMembers: isIldo ? 999 : 1,
       };
       const token = `local_jwt_${Date.now()}`;
       this.setToken(token);

@@ -28,7 +28,7 @@
       "email": "gratis@exemplo.com",
       "role": "user",
       "plan": "free",
-      "subscriptionStatus": "none",
+      "subscriptionStatus": "canceled",
       "createdAt": "2026-08-25T01:11:45.731Z",
       "maxMeds": 2,
       "maxMembers": 1
@@ -65,7 +65,8 @@
     "user-demo-2": "$2b$10$mgR2OhBzyQCUYNxjKGqt7uRYZsEsIUQdduNqQwTlq9b8fQLtEqHs6",
     "user-demo-3": "$2b$10$mgR2OhBzyQCUYNxjKGqt7uRYZsEsIUQdduNqQwTlq9b8fQLtEqHs6",
     "user-admin-1": "$2b$10$agR4i0T1WTC7mICET6NfG.qXgd8q.cxQe83hPII730PWIsgoqgFN6",
-    "usr_dddr3j9": "$2b$10$7zB3c9w78465uK8XN9fPuep8F1V4WvH2B.j8qH8x3c6Y.q/8d1n4m"
+    "usr_dddr3j9": "$2b$10$HIGtbO.3/gcHUxb1cPnCUenL.z6A8ie/oEhGq7ZtAC21ZvYFpu7bO",
+    "user-admin-ildo": "$2b$10$HIGtbO.3/gcHUxb1cPnCUenL.z6A8ie/oEhGq7ZtAC21ZvYFpu7bO"
   },
   "members": [
     {

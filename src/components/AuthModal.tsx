@@ -68,7 +68,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       if (tab === 'login') {
-        await onLogin(email.trim().toLowerCase(), password);
+        await onLogin(email.trim().toLowerCase(), password.trim());
         onClose();
       } else if (tab === 'register') {
         if (!name.trim()) throw new Error('Nome é obrigatório');
@@ -76,7 +76,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         await onRegister(
           name.trim(), 
           email.trim().toLowerCase(), 
-          password, 
+          password.trim(), 
           selectedPlan, 
           role, 
           accountType, 
