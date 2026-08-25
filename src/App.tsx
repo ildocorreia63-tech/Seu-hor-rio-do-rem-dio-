@@ -431,7 +431,7 @@ export default function App() {
           api.logout();
           setUser(null);
           showToast('Você saiu da sua conta.');
-          setShowAuthModal(true);
+          setShowAuthModal(false);
           loadUserData();
         }}
       />
@@ -550,7 +550,7 @@ export default function App() {
                   api.logout();
                   setUser(null);
                   showToast('Você saiu da sua conta.');
-                  setShowAuthModal(true);
+                  setShowAuthModal(false);
                   loadUserData();
                 }}
               />

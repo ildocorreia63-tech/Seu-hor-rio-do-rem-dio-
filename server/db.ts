@@ -346,15 +346,27 @@ class Database {
 
   // User methods
   getUserByEmail(email: string): User | undefined {
-    return this.data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!email) return undefined;
+    const clean = email.trim().toLowerCase();
+    return this.data.users.find(u => u.email.trim().toLowerCase() === clean);
   }
 
   getUserById(id: string): User | undefined {
+    if (!id) return undefined;
     return this.data.users.find(u => u.id === id);
   }
 
-  getUserPassword(userId: string): string | undefined {
-    return this.data.passwords[userId];
+  getUserPassword(userIdOrEmail: string): string | undefined {
+    if (!userIdOrEmail) return undefined;
+    if (this.data.passwords[userIdOrEmail]) {
+      return this.data.passwords[userIdOrEmail];
+    }
+    const clean = userIdOrEmail.trim().toLowerCase();
+    const user = this.data.users.find(u => u.id === userIdOrEmail || u.email.trim().toLowerCase() === clean);
+    if (user && this.data.passwords[user.id]) {
+      return this.data.passwords[user.id];
+    }
+    return undefined;
   }
 
   createUser(

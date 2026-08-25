@@ -7,6 +7,8 @@ const TOKEN_KEY = 'shdr_auth_token';
 const SAVED_ACCOUNTS_KEY = 'shdr_saved_accounts';
 const SETTINGS_KEY = 'shdr_settings';
 const GEMINI_API_KEY_STORAGE = 'shdr_custom_gemini_key';
+const LOCAL_USERS_KEY = 'shdr_local_users_db';
+const LOCAL_PASSWORDS_KEY = 'shdr_local_passwords_db';
 
 export const defaultSettings: AppSettings = {
   soundEnabled: true,
@@ -22,9 +24,85 @@ export const defaultSettings: AppSettings = {
   fontSize: 'large',
 };
 
-// Seed fallback data for static GitHub Pages / Offline mode
-const defaultLocalMembers: FamilyMember[] = [];
-const defaultLocalMedicines: Medicine[] = [];
+// Seed default users for instant offline / static hosting (e.g. Vercel, PWA, GitHub Pages)
+const initialSeedUsers: User[] = [
+  {
+    id: 'user-admin-ildo',
+    name: 'Ildo Correia de Lima',
+    email: 'ildocorreia63@gmail.com',
+    role: 'admin',
+    plan: 'family',
+    subscriptionStatus: 'active',
+    accountType: 'clinic',
+    organizationName: 'Administração Central SaaS',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    maxMeds: 999,
+    maxMembers: 999,
+  },
+  {
+    id: 'user-admin-1',
+    name: 'Administrador SaaS Master',
+    email: 'admin@seuremedio.com',
+    role: 'admin',
+    plan: 'family',
+    subscriptionStatus: 'active',
+    accountType: 'clinic',
+    organizationName: 'Central SaaS SeuRemédio',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    maxMeds: 999,
+    maxMembers: 999,
+  },
+  {
+    id: 'user-demo-1',
+    name: 'Dra. Camila Santos (Clínica)',
+    email: 'camila@exemplo.com',
+    role: 'caregiver',
+    plan: 'family',
+    subscriptionStatus: 'active',
+    accountType: 'clinic',
+    organizationName: 'Clínica Saúde Viva',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    maxMeds: 999,
+    maxMembers: 10,
+  },
+  {
+    id: 'user-demo-2',
+    name: 'Marcos Silva (Pessoal)',
+    email: 'marcos@exemplo.com',
+    role: 'user',
+    plan: 'pro_monthly',
+    subscriptionStatus: 'active',
+    accountType: 'personal',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    maxMeds: 999,
+    maxMembers: 3,
+  },
+  {
+    id: 'user-demo-3',
+    name: 'Usuário Gratuito',
+    email: 'gratis@exemplo.com',
+    role: 'user',
+    plan: 'free',
+    subscriptionStatus: 'none',
+    accountType: 'personal',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    maxMeds: 2,
+    maxMembers: 1,
+  }
+];
+
+const initialSeedPasswords: Record<string, string> = {
+  'user-admin-ildo': 'Patty641210',
+  'ildocorreia63@gmail.com': 'Patty641210',
+  'user-admin-1': '123456',
+  'admin@seuremedio.com': '123456',
+  'user-demo-1': '123456',
+  'camila@exemplo.com': '123456',
+  'user-demo-2': '123456',
+  'marcos@exemplo.com': '123456',
+  'user-demo-3': '123456',
+  'gratis@exemplo.com': '123456'
+};
 
 class ApiService {
   private token: string | null = null;
@@ -32,9 +110,68 @@ class ApiService {
   constructor() {
     try {
       this.token = localStorage.getItem(TOKEN_KEY);
+      this.ensureSeedData();
     } catch {
       this.token = null;
     }
+  }
+
+  private ensureSeedData() {
+    try {
+      const existingUsers = this.getLocalUsers();
+      if (!existingUsers || existingUsers.length === 0) {
+        this.saveLocalUsers(initialSeedUsers);
+        this.saveLocalPasswords(initialSeedPasswords);
+      } else {
+        // Ensure Ildo Admin is always up-to-date
+        let ildo = existingUsers.find(u => u.email.toLowerCase() === 'ildocorreia63@gmail.com');
+        if (!ildo) {
+          existingUsers.unshift(initialSeedUsers[0]);
+          this.saveLocalUsers(existingUsers);
+        } else {
+          ildo.role = 'admin';
+          ildo.plan = 'family';
+          ildo.subscriptionStatus = 'active';
+          ildo.maxMeds = 999;
+          ildo.maxMembers = 999;
+          this.saveLocalUsers(existingUsers);
+        }
+        const pwds = this.getLocalPasswords();
+        pwds['user-admin-ildo'] = 'Patty641210';
+        pwds['ildocorreia63@gmail.com'] = 'Patty641210';
+        this.saveLocalPasswords(pwds);
+      }
+    } catch {}
+  }
+
+  private getLocalUsers(): User[] {
+    try {
+      const v = localStorage.getItem(LOCAL_USERS_KEY);
+      return v ? JSON.parse(v) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private saveLocalUsers(users: User[]) {
+    try {
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
+    } catch {}
+  }
+
+  private getLocalPasswords(): Record<string, string> {
+    try {
+      const v = localStorage.getItem(LOCAL_PASSWORDS_KEY);
+      return v ? JSON.parse(v) : { ...initialSeedPasswords };
+    } catch {
+      return { ...initialSeedPasswords };
+    }
+  }
+
+  private saveLocalPasswords(passwords: Record<string, string>) {
+    try {
+      localStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(passwords));
+    } catch {}
   }
 
   getToken(): string | null {
@@ -73,9 +210,8 @@ class ApiService {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    // If running on static host (e.g. GitHub Pages), avoid unnecessary slow network roundtrips
     if (this.isStaticDeployment()) {
-      throw new Error('Static deployment: Using local storage and instant offline knowledge base');
+      throw new Error('Static host');
     }
 
     const headers: Record<string, string> = {
@@ -88,7 +224,6 @@ class ApiService {
     }
 
     try {
-      // 4-second timeout controller so requests never hang
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
 
@@ -99,7 +234,6 @@ class ApiService {
       });
       clearTimeout(timeoutId);
 
-      // Check if response is actually JSON and not an HTML 404 page
       const contentType = res.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error('Static host: No backend server response');
@@ -151,43 +285,83 @@ class ApiService {
 
   // --- AUTH ---
   async login(email: string, password: string): Promise<{ user: User; token: string }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      throw new Error('E-mail e senha são obrigatórios');
+    }
+
     try {
       const data = await this.request<{ user: User; token: string }>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
       });
       this.setToken(data.token);
       this.setLocal('user', data.user);
       this.saveAccount(data.user, data.token);
+
+      // Keep local sync
+      const localUsers = this.getLocalUsers().filter(u => u.id !== data.user.id);
+      localUsers.unshift(data.user);
+      this.saveLocalUsers(localUsers);
+      const pwds = this.getLocalPasswords();
+      pwds[data.user.id] = cleanPassword;
+      pwds[cleanEmail] = cleanPassword;
+      this.saveLocalPasswords(pwds);
+
       return data;
     } catch (err: any) {
-      // If error from real server, rethrow error
-      if (err.message && !err.message.includes('Static host') && !err.message.includes('Failed to fetch')) {
+      // If error came from the real server (e.g. 401 wrong password), rethrow the exact server message
+      if (err.message && !err.message.includes('Static host') && !err.message.includes('Failed to fetch') && !err.message.includes('aborted')) {
         throw err;
       }
-      // Offline fallback only for valid non-empty login
-      if (!email || !password) {
-        throw new Error('E-mail e senha são obrigatórios');
+
+      // Offline / Static host (e.g. Vercel) fallback:
+      this.ensureSeedData();
+      const localUsers = this.getLocalUsers();
+      const pwds = this.getLocalPasswords();
+
+      const isIldo = cleanEmail === 'ildocorreia63@gmail.com';
+      let user = localUsers.find(u => u.email.toLowerCase() === cleanEmail);
+
+      if (isIldo) {
+        if (cleanPassword !== 'Patty641210') {
+          throw new Error('Senha incorreta para o Administrador Master. A senha correta é Patty641210.');
+        }
+        if (!user) {
+          user = {
+            id: 'user-admin-ildo',
+            name: 'Ildo Correia de Lima',
+            email: 'ildocorreia63@gmail.com',
+            role: 'admin',
+            plan: 'family',
+            subscriptionStatus: 'active',
+            accountType: 'clinic',
+            organizationName: 'Administração Central SaaS',
+            createdAt: new Date().toISOString(),
+            maxMeds: 999,
+            maxMembers: 999,
+          };
+          localUsers.unshift(user);
+          this.saveLocalUsers(localUsers);
+        }
+      } else {
+        if (!user) {
+          throw new Error('E-mail não cadastrado. Crie sua conta na aba "Criar Conta (Cadastro)" ou verifique o e-mail digitado.');
+        }
+
+        const expectedPwd = pwds[user.id] || pwds[cleanEmail] || '123456';
+        if (cleanPassword !== expectedPwd) {
+          throw new Error('Senha incorreta. Verifique se digitou maiúsculas e minúsculas corretamente.');
+        }
       }
 
-      const isIldo = email.trim().toLowerCase() === 'ildocorreia63@gmail.com';
-      const user: User = {
-        id: isIldo ? 'user-admin-ildo' : `user-local-${Date.now()}`,
-        name: isIldo ? 'Ildo Correia de Lima' : email.split('@')[0],
-        email: email.trim().toLowerCase(),
-        role: isIldo || email.toLowerCase().includes('admin') ? 'admin' : 'user',
-        plan: isIldo ? 'family' : 'free',
-        subscriptionStatus: isIldo ? 'active' : 'none',
-        accountType: isIldo ? 'clinic' : 'personal',
-        organizationName: isIldo ? 'Administração Central SaaS' : undefined,
-        createdAt: new Date().toISOString(),
-        maxMeds: isIldo ? 999 : 2,
-        maxMembers: isIldo ? 999 : 1,
-      };
-      const token = `local_jwt_${Date.now()}`;
+      const token = `jwt_token_${user.id}_${Date.now()}`;
       this.setToken(token);
       this.setLocal('user', user);
       this.saveAccount(user, token);
+
       return { user, token };
     }
   }
@@ -201,36 +375,101 @@ class ApiService {
     accountType: string = 'personal',
     organizationName?: string
   ): Promise<{ user: User; token: string }> {
+    const cleanName = (name || '').trim();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      throw new Error('E-mail e senha são obrigatórios');
+    }
+
+    if (cleanPassword.length < 4) {
+      throw new Error('A senha deve ter pelo menos 4 caracteres');
+    }
+
+    const isIldo = cleanEmail === 'ildocorreia63@gmail.com';
+
     try {
       const data = await this.request<{ user: User; token: string }>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password, plan, role, accountType, organizationName }),
+        body: JSON.stringify({ 
+          name: cleanName || (isIldo ? 'Ildo Correia de Lima' : cleanEmail.split('@')[0]), 
+          email: cleanEmail, 
+          password: cleanPassword, 
+          plan: isIldo ? 'family' : plan, 
+          role: isIldo || cleanEmail.includes('admin') ? 'admin' : role, 
+          accountType: isIldo ? 'clinic' : accountType, 
+          organizationName: isIldo ? 'Administração Central SaaS' : organizationName 
+        }),
       });
       this.setToken(data.token);
       this.setLocal('user', data.user);
       this.saveAccount(data.user, data.token);
+
+      // Local sync
+      const localUsers = this.getLocalUsers().filter(u => u.id !== data.user.id && u.email !== cleanEmail);
+      localUsers.unshift(data.user);
+      this.saveLocalUsers(localUsers);
+      const pwds = this.getLocalPasswords();
+      pwds[data.user.id] = cleanPassword;
+      pwds[cleanEmail] = cleanPassword;
+      this.saveLocalPasswords(pwds);
+
       return data;
     } catch (err: any) {
-      if (err.message && !err.message.includes('Static host') && !err.message.includes('Failed to fetch')) {
+      if (err.message && !err.message.includes('Static host') && !err.message.includes('Failed to fetch') && !err.message.includes('aborted')) {
         throw err;
       }
+
+      this.ensureSeedData();
+      const localUsers = this.getLocalUsers();
+      if (localUsers.some(u => u.email.toLowerCase() === cleanEmail && !isIldo)) {
+        throw new Error('Este e-mail já está cadastrado. Vá para a aba "Já Tenho Conta" para entrar.');
+      }
+
       const user: User = {
-        id: `user-${Date.now()}`,
-        name: name || 'Novo Usuário',
-        email: email || 'usuario@exemplo.com',
-        role: (role as any) || 'user',
-        plan: (plan as any) || 'free',
-        subscriptionStatus: plan === 'free' ? 'none' : 'active',
-        accountType: (accountType as any) || 'personal',
-        organizationName,
+        id: isIldo ? 'user-admin-ildo' : `user-${Date.now()}`,
+        name: cleanName || (isIldo ? 'Ildo Correia de Lima' : cleanEmail.split('@')[0]),
+        email: cleanEmail,
+        role: isIldo || cleanEmail.includes('admin') ? 'admin' : (role as any) || 'user',
+        plan: isIldo ? 'family' : (plan as any) || 'free',
+        subscriptionStatus: isIldo || plan !== 'free' ? 'active' : 'none',
+        accountType: isIldo ? 'clinic' : (accountType as any) || 'personal',
+        organizationName: isIldo ? 'Administração Central SaaS' : organizationName,
         createdAt: new Date().toISOString(),
-        maxMeds: plan === 'free' ? 2 : 999,
-        maxMembers: plan === 'free' ? 1 : 10,
+        maxMeds: isIldo || plan !== 'free' ? 999 : 2,
+        maxMembers: isIldo ? 999 : plan === 'family' ? 10 : plan === 'pro_monthly' || plan === 'pro_yearly' ? 3 : 1,
       };
-      const token = `local_jwt_${Date.now()}`;
+
+      const token = `jwt_token_${user.id}_${Date.now()}`;
       this.setToken(token);
       this.setLocal('user', user);
       this.saveAccount(user, token);
+
+      const filteredUsers = localUsers.filter(u => u.id !== user.id && u.email !== cleanEmail);
+      filteredUsers.unshift(user);
+      this.saveLocalUsers(filteredUsers);
+
+      const pwds = this.getLocalPasswords();
+      pwds[user.id] = cleanPassword;
+      pwds[cleanEmail] = cleanPassword;
+      this.saveLocalPasswords(pwds);
+
+      // Create primary member profile in local storage if none exists
+      const currentMembers = this.getLocal<FamilyMember[]>('members', []);
+      if (!currentMembers.some(m => m.userId === user.id)) {
+        currentMembers.unshift({
+          id: `mem-${Date.now()}`,
+          userId: user.id,
+          name: user.name,
+          emoji: user.accountType === 'clinic' ? '🏥' : user.role === 'caregiver' ? '🩺' : '👤',
+          color: '#0f766e',
+          relation: 'Titular',
+          isDefault: true
+        });
+        this.setLocal('members', currentMembers);
+      }
+
       return { user, token };
     }
   }
@@ -246,7 +485,21 @@ class ApiService {
       this.saveAccount(data.user, data.token);
       return data;
     } catch {
-      throw new Error('Não foi possível conectar');
+      this.ensureSeedData();
+      const localUsers = this.getLocalUsers();
+      let user = localUsers.find(u => u.id === demoUserId);
+      if (!user && (demoUserId === 'user-admin-ildo' || demoUserId.includes('ildo'))) {
+        user = localUsers.find(u => u.email === 'ildocorreia63@gmail.com');
+      }
+      if (!user) {
+        user = initialSeedUsers.find(u => u.id === demoUserId) || initialSeedUsers[0];
+      }
+
+      const token = `demo_jwt_${user.id}_${Date.now()}`;
+      this.setToken(token);
+      this.setLocal('user', user);
+      this.saveAccount(user, token);
+      return { user, token };
     }
   }
 
@@ -257,12 +510,12 @@ class ApiService {
     try {
       const data = await this.request<{ user: User }>('/auth/me');
       this.setLocal('user', data.user);
+      this.saveAccount(data.user, this.token);
       return data.user;
     } catch {
-      // If token is invalid or request fails, clear invalid session
-      this.setToken(null);
-      this.setLocal('user', null);
-      return null;
+      // In offline / static deployment (like Vercel), preserve the current active session!
+      const user = this.getLocal<User | null>('user', null);
+      return user;
     }
   }
 
@@ -540,7 +793,7 @@ class ApiService {
       });
       return data.medicine;
     } catch {
-      const meds = this.getLocal<Medicine[]>('medicines', defaultLocalMedicines);
+      const meds = this.getLocal<Medicine[]>('medicines', []);
       const idx = meds.findIndex((m) => m.id === id);
       if (idx >= 0) {
         meds[idx] = { ...meds[idx], ...updates };
@@ -555,7 +808,7 @@ class ApiService {
     try {
       await this.request(`/medicines/${id}`, { method: 'DELETE' });
     } catch {
-      const meds = this.getLocal<Medicine[]>('medicines', defaultLocalMedicines);
+      const meds = this.getLocal<Medicine[]>('medicines', []);
       this.setLocal('medicines', meds.filter((m) => m.id !== id));
     }
   }
@@ -567,7 +820,7 @@ class ApiService {
         body: JSON.stringify({ scheduledTime, scheduledDate, notes }),
       });
     } catch {
-      const meds = this.getLocal<Medicine[]>('medicines', defaultLocalMedicines);
+      const meds = this.getLocal<Medicine[]>('medicines', []);
       const med = meds.find((m) => m.id === id);
       const remaining = med ? Math.max(0, med.quantity - 1) : 0;
       if (med) {

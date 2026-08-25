@@ -56,25 +56,34 @@ async function startServer() {
   // --- AUTH ENDPOINTS ---
   app.post('/api/auth/register', (req, res) => {
     try {
-      const { name, email, password, plan, role, accountType, organizationName } = req.body;
+      const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+      const password = typeof req.body.password === 'string' ? req.body.password.trim() : '';
+      const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+      const { plan, role, accountType, organizationName } = req.body;
+
       if (!email || !password) {
         return res.status(400).json({ error: 'E-mail e senha são obrigatórios' });
       }
 
+      if (password.length < 4) {
+        return res.status(400).json({ error: 'A senha deve ter pelo menos 4 caracteres' });
+      }
+
       const existing = db.getUserByEmail(email);
       if (existing) {
-        return res.status(400).json({ error: 'Este e-mail já está cadastrado' });
+        return res.status(400).json({ error: 'Este e-mail já está cadastrado. Vá para a aba "Já Tenho Conta" para entrar.' });
       }
 
       const passwordHash = bcrypt.hashSync(password, 10);
+      const isIldo = email === 'ildocorreia63@gmail.com';
       const user = db.createUser(
-        name || email.split('@')[0], 
+        name || (isIldo ? 'Ildo Correia de Lima' : email.split('@')[0]), 
         email, 
         passwordHash, 
-        plan || 'free',
-        role || 'user',
-        accountType || 'personal',
-        organizationName
+        isIldo ? 'family' : (plan || 'free'),
+        isIldo || email.includes('admin') ? 'admin' : (role || 'user'),
+        isIldo ? 'clinic' : (accountType || 'personal'),
+        isIldo ? 'Administração Central SaaS' : organizationName
       );
 
       const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
@@ -97,12 +106,12 @@ async function startServer() {
 
       const user = db.getUserByEmail(email);
       if (!user) {
-        return res.status(401).json({ error: 'E-mail ou senha incorretos' });
+        return res.status(401).json({ error: 'E-mail não cadastrado. Verifique a digitação ou crie uma conta.' });
       }
 
       const hash = db.getUserPassword(user.id);
       if (!hash || !bcrypt.compareSync(password, hash)) {
-        return res.status(401).json({ error: 'E-mail ou senha incorretos' });
+        return res.status(401).json({ error: 'Senha incorreta. Verifique se digitou maiúsculas e minúsculas corretamente.' });
       }
 
       const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });

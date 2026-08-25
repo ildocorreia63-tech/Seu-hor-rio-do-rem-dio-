@@ -96,9 +96,9 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
       }
     } catch (err: any) {
       const msg = err.message || '';
-      if (msg.toLowerCase().includes('já cadastrado') || msg.toLowerCase().includes('already exists') || email.trim().toLowerCase() === 'ildocorreia63@gmail.com') {
+      if (tab === 'register' && (msg.toLowerCase().includes('já cadastrado') || msg.toLowerCase().includes('already exists') || email.trim().toLowerCase() === 'ildocorreia63@gmail.com')) {
         setTab('login');
-        setInfoMsg('Essa conta já existe! Digite sua senha abaixo para entrar.');
+        setInfoMsg('Essa conta já existe! Digite sua senha para entrar.');
       } else {
         setErrorMsg(msg || 'Erro ao processar. Verifique os dados e tente novamente.');
       }
