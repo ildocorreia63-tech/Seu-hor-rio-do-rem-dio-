@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { ActiveAlarm } from '../services/alarmManager';
 import { audio } from '../services/audio';
-import { Bell, Check, Clock, Volume2, User, AlertCircle } from 'lucide-react';
+import { Bell, Check, Clock, Volume2, User, AlertCircle, Play } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface AlarmOverlayProps {
@@ -36,6 +36,17 @@ export const AlarmOverlay: React.FC<AlarmOverlayProps> = ({
   const handleSnooze = () => {
     audio.stopAlarm();
     onSnooze(alarm, snoozeMinutes);
+  };
+
+  const handleReplayAudio = () => {
+    audio.unlockAudio();
+    audio.startAlarm('standard', 100, true);
+    setTimeout(() => {
+      audio.speak(
+        `Atenção! É hora de tomar ${medicine.name}, dosagem ${medicine.dosage || ''}`,
+        100
+      );
+    }, 600);
   };
 
   return (
@@ -94,6 +105,18 @@ export const AlarmOverlay: React.FC<AlarmOverlayProps> = ({
             <p className="text-lg font-bold text-teal-600 dark:text-teal-400 mt-1">
               Dosagem: {medicine.dosage || '1 dose prescrita'}
             </p>
+          </div>
+
+          {/* Replay Sound / Voice Announcement Button */}
+          <div className="flex justify-center">
+            <button
+              onClick={handleReplayAudio}
+              className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition flex items-center gap-1.5 active:scale-95 border border-slate-200 dark:border-slate-700 shadow-sm"
+              title="Tocar som do alarme ou falar novamente"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span>Ouvir Alarme / Voz Novamente</span>
+            </button>
           </div>
 
           {/* Stock status indicator */}

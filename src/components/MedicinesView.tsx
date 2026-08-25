@@ -62,6 +62,16 @@ export const MedicinesView: React.FC<MedicinesViewProps> = ({
         </button>
       </div>
 
+      {/* Account Blocked Notice */}
+      {user?.subscriptionStatus === 'canceled' && (
+        <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-200 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+          <p className="text-xs font-semibold">
+            Conta bloqueada por inadimplência. Não é possível cadastrar ou editar remédios.
+          </p>
+        </div>
+      )}
+
       {/* List count */}
       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
         <span>

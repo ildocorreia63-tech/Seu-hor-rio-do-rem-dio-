@@ -1,8 +1,10 @@
-import { User, FamilyMember, Medicine, DoseRecord, AppSettings, PlanConfig } from '../types';
+import { User, FamilyMember, Medicine, DoseRecord, AppSettings, PlanConfig, SaasStats, SavedAccount } from '../types';
 import { getOfflineHealthAdvice } from './aiKnowledge';
+import { aiCache } from './aiCache';
 
 const API_BASE = '/api';
 const TOKEN_KEY = 'shdr_auth_token';
+const SAVED_ACCOUNTS_KEY = 'shdr_saved_accounts';
 const SETTINGS_KEY = 'shdr_settings';
 const GEMINI_API_KEY_STORAGE = 'shdr_custom_gemini_key';
 
@@ -11,89 +13,18 @@ export const defaultSettings: AppSettings = {
   soundType: 'standard',
   vibrateEnabled: true,
   voiceEnabled: true,
+  volume: 100,
+  volumeBoost: true,
   snoozeMinutes: 10,
   snoozeSound: 'soft',
   theme: 'light',
   notificationsEnabled: false,
+  fontSize: 'large',
 };
 
 // Seed fallback data for static GitHub Pages / Offline mode
-const defaultLocalUser: User = {
-  id: 'user-demo-1',
-  name: 'Dra. Camila Santos',
-  email: 'camila@exemplo.com',
-  role: 'user',
-  plan: 'family',
-  subscriptionStatus: 'active',
-  createdAt: new Date().toISOString(),
-  maxMeds: 999,
-  maxMembers: 10,
-};
-
-const defaultLocalMembers: FamilyMember[] = [
-  {
-    id: 'mem-1',
-    userId: 'user-demo-1',
-    name: 'Eu (Camila)',
-    emoji: '👩‍⚕️',
-    color: '#0f766e',
-    relation: 'Titular',
-    isDefault: true,
-  },
-  {
-    id: 'mem-2',
-    userId: 'user-demo-1',
-    name: 'Vovô João',
-    emoji: '👴',
-    color: '#3b82f6',
-    relation: 'Pai',
-  },
-  {
-    id: 'mem-3',
-    userId: 'user-demo-1',
-    name: 'Enzo (Filho)',
-    emoji: '👦',
-    color: '#f59e0b',
-    relation: 'Filho',
-  },
-];
-
-const defaultLocalMedicines: Medicine[] = [
-  {
-    id: 'med-1',
-    userId: 'user-demo-1',
-    memberId: 'mem-1',
-    name: 'Losartana Potássica',
-    dosage: '50mg - 1 comprimido',
-    quantity: 28,
-    unit: 'comprimidos',
-    frequencyType: 'daily',
-    times: ['08:00', '20:00'],
-    startDate: new Date().toISOString().split('T')[0],
-    durationDays: 0,
-    notes: 'Tomar com água após o café ou jantar',
-    doctorName: 'Dr. Roberto Cardiólogo',
-    active: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'med-2',
-    userId: 'user-demo-1',
-    memberId: 'mem-2',
-    name: 'Metformina',
-    dosage: '850mg - 1 comprimido',
-    quantity: 14,
-    unit: 'comprimidos',
-    frequencyType: 'daily',
-    times: ['12:30', '19:30'],
-    startDate: new Date().toISOString().split('T')[0],
-    durationDays: 0,
-    notes: 'Tomar junto com o almoço e jantar para proteger o estômago',
-    doctorName: 'Dra. Vanessa Endocrino',
-    active: true,
-    createdAt: new Date().toISOString(),
-  },
-];
+const defaultLocalMembers: FamilyMember[] = [];
+const defaultLocalMedicines: Medicine[] = [];
 
 class ApiService {
   private token: string | null = null;
@@ -135,7 +66,18 @@ class ApiService {
     } catch {}
   }
 
+  private isStaticDeployment(): boolean {
+    if (typeof window === 'undefined') return false;
+    const host = window.location.hostname;
+    return host.includes('github.io') || window.location.protocol === 'file:';
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    // If running on static host (e.g. GitHub Pages), avoid unnecessary slow network roundtrips
+    if (this.isStaticDeployment()) {
+      throw new Error('Static deployment: Using local storage and instant offline knowledge base');
+    }
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -146,10 +88,16 @@ class ApiService {
     }
 
     try {
+      // 4-second timeout controller so requests never hang
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
       const res = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       // Check if response is actually JSON and not an HTML 404 page
       const contentType = res.headers.get('content-type');
@@ -167,6 +115,40 @@ class ApiService {
     }
   }
 
+  // --- MULTI-ACCOUNT MANAGEMENT (MULTI-TENANT SWITCHER) ---
+  getSavedAccounts(): SavedAccount[] {
+    try {
+      const raw = localStorage.getItem(SAVED_ACCOUNTS_KEY);
+      if (!raw) return [];
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  saveAccount(user: User, token?: string) {
+    try {
+      const accounts = this.getSavedAccounts().filter(a => a.id !== user.id);
+      accounts.unshift({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        plan: user.plan,
+        role: user.role,
+        token: token || this.token || undefined,
+        lastLogin: new Date().toISOString()
+      });
+      localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts.slice(0, 10)));
+    } catch {}
+  }
+
+  removeSavedAccount(id: string) {
+    try {
+      const accounts = this.getSavedAccounts().filter(a => a.id !== id);
+      localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(accounts));
+    } catch {}
+  }
+
   // --- AUTH ---
   async login(email: string, password: string): Promise<{ user: User; token: string }> {
     try {
@@ -176,44 +158,76 @@ class ApiService {
       });
       this.setToken(data.token);
       this.setLocal('user', data.user);
+      this.saveAccount(data.user, data.token);
       return data;
-    } catch {
-      // Local fallback
+    } catch (err: any) {
+      // If error from real server, rethrow error
+      if (err.message && !err.message.includes('Static host') && !err.message.includes('Failed to fetch')) {
+        throw err;
+      }
+      // Offline fallback only for valid non-empty login
+      if (!email || !password) {
+        throw new Error('E-mail e senha são obrigatórios');
+      }
       const user: User = {
-        ...defaultLocalUser,
-        email: email || defaultLocalUser.email,
+        id: `user-local-${Date.now()}`,
+        name: email.split('@')[0],
+        email: email,
+        role: 'user',
+        plan: 'free',
+        subscriptionStatus: 'none',
+        accountType: 'personal',
+        createdAt: new Date().toISOString(),
+        maxMeds: 2,
+        maxMembers: 1,
       };
-      const token = 'local_jwt_token_123';
+      const token = `local_jwt_${Date.now()}`;
       this.setToken(token);
       this.setLocal('user', user);
+      this.saveAccount(user, token);
       return { user, token };
     }
   }
 
-  async register(name: string, email: string, password: string, plan: string = 'free'): Promise<{ user: User; token: string }> {
+  async register(
+    name: string, 
+    email: string, 
+    password: string, 
+    plan: string = 'free',
+    role: string = 'user',
+    accountType: string = 'personal',
+    organizationName?: string
+  ): Promise<{ user: User; token: string }> {
     try {
       const data = await this.request<{ user: User; token: string }>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password, plan }),
+        body: JSON.stringify({ name, email, password, plan, role, accountType, organizationName }),
       });
       this.setToken(data.token);
       this.setLocal('user', data.user);
+      this.saveAccount(data.user, data.token);
       return data;
-    } catch {
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Static host') && !err.message.includes('Failed to fetch')) {
+        throw err;
+      }
       const user: User = {
         id: `user-${Date.now()}`,
         name: name || 'Novo Usuário',
         email: email || 'usuario@exemplo.com',
-        role: 'user',
+        role: (role as any) || 'user',
         plan: (plan as any) || 'free',
-        subscriptionStatus: 'active',
+        subscriptionStatus: plan === 'free' ? 'none' : 'active',
+        accountType: (accountType as any) || 'personal',
+        organizationName,
         createdAt: new Date().toISOString(),
-        maxMeds: plan === 'free' ? 3 : 999,
+        maxMeds: plan === 'free' ? 2 : 999,
         maxMembers: plan === 'free' ? 1 : 10,
       };
-      const token = 'local_jwt_token_new';
+      const token = `local_jwt_${Date.now()}`;
       this.setToken(token);
       this.setLocal('user', user);
+      this.saveAccount(user, token);
       return { user, token };
     }
   }
@@ -226,45 +240,181 @@ class ApiService {
       });
       this.setToken(data.token);
       this.setLocal('user', data.user);
+      this.saveAccount(data.user, data.token);
       return data;
     } catch {
-      const user = this.getLocal<User>('user', defaultLocalUser);
-      const token = 'local_demo_token';
-      this.setToken(token);
-      return { user, token };
+      throw new Error('Não foi possível conectar');
     }
   }
 
-  async getMe(): Promise<User> {
+  async getMe(): Promise<User | null> {
+    if (!this.token) {
+      return null;
+    }
     try {
       const data = await this.request<{ user: User }>('/auth/me');
       this.setLocal('user', data.user);
       return data.user;
     } catch {
-      return this.getLocal<User>('user', defaultLocalUser);
+      // If token is invalid or request fails, clear invalid session
+      this.setToken(null);
+      this.setLocal('user', null);
+      return null;
     }
   }
 
   async updateProfile(name: string, email: string): Promise<User> {
+    const data = await this.request<{ user: User }>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ name, email }),
+    });
+    this.setLocal('user', data.user);
+    this.saveAccount(data.user);
+    return data.user;
+  }
+
+  // --- SAAS METRICS & MULTI-USER API ---
+  async getSaasStats(): Promise<SaasStats> {
     try {
-      const data = await this.request<{ user: User }>('/auth/profile', {
-        method: 'PUT',
-        body: JSON.stringify({ name, email }),
-      });
-      this.setLocal('user', data.user);
-      return data.user;
+      return await this.request<SaasStats>('/saas/stats');
     } catch {
-      const user = this.getLocal<User>('user', defaultLocalUser);
-      user.name = name;
-      user.email = email;
-      this.setLocal('user', user);
-      return user;
+      // Local fallback mock stats
+      return {
+        totalUsers: 5,
+        activeSubscriptions: 4,
+        estimatedMrr: 139.60,
+        totalMedicines: 8,
+        totalDosesRecorded: 15,
+        planDistribution: {
+          free: 1,
+          pro_monthly: 1,
+          pro_yearly: 0,
+          family: 3,
+        },
+        usersList: [
+          {
+            id: 'user-admin-ildo',
+            name: 'Ildo Correia de Lima',
+            email: 'ildocorreia63@gmail.com',
+            role: 'admin',
+            plan: 'family',
+            subscriptionStatus: 'active',
+            createdAt: new Date().toISOString(),
+            medicinesCount: 3,
+            membersCount: 1,
+          },
+          {
+            id: 'user-demo-1',
+            name: 'Dra. Camila Santos (Clínica)',
+            email: 'camila@exemplo.com',
+            role: 'caregiver',
+            plan: 'family',
+            subscriptionStatus: 'active',
+            createdAt: new Date().toISOString(),
+            medicinesCount: 3,
+            membersCount: 3,
+          },
+          {
+            id: 'user-demo-2',
+            name: 'Marcos Silva (Pessoal)',
+            email: 'marcos@exemplo.com',
+            role: 'user',
+            plan: 'pro_monthly',
+            subscriptionStatus: 'active',
+            createdAt: new Date().toISOString(),
+            medicinesCount: 1,
+            membersCount: 1,
+          },
+          {
+            id: 'user-demo-3',
+            name: 'Usuário Gratuito',
+            email: 'gratis@exemplo.com',
+            role: 'user',
+            plan: 'free',
+            subscriptionStatus: 'none',
+            createdAt: new Date().toISOString(),
+            medicinesCount: 1,
+            membersCount: 1,
+          },
+          {
+            id: 'user-admin-1',
+            name: 'Administrador SaaS Master',
+            email: 'admin@seuremedio.com',
+            role: 'admin',
+            plan: 'family',
+            subscriptionStatus: 'active',
+            createdAt: new Date().toISOString(),
+            medicinesCount: 3,
+            membersCount: 3,
+          }
+        ]
+      };
+    }
+  }
+
+  async getSaasUsers(): Promise<{ users: User[] }> {
+    return await this.request<{ users: User[] }>('/saas/users');
+  }
+
+  async getAdminUserDetails(userId: string): Promise<{ user: User; members: FamilyMember[]; medicines: Medicine[]; history: DoseRecord[] }> {
+    return await this.request<{ user: User; members: FamilyMember[]; medicines: Medicine[]; history: DoseRecord[] }>(`/admin/users/${userId}/details`);
+  }
+
+  async adminImpersonate(userId: string): Promise<{ user: User; token: string }> {
+    const data = await this.request<{ user: User; token: string }>(`/admin/users/${userId}/impersonate`, {
+      method: 'POST',
+    });
+    this.setToken(data.token);
+    this.setLocal('user', data.user);
+    this.saveAccount(data.user, data.token);
+    return data;
+  }
+
+  async adminUpdateUserPlan(userId: string, plan: string): Promise<{ user: User; message: string }> {
+    return await this.request<{ user: User; message: string }>(`/admin/users/${userId}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({ plan }),
+    });
+  }
+
+  async adminUpdateUserRole(userId: string, role: string): Promise<{ user: User; message: string }> {
+    return await this.request<{ user: User; message: string }>(`/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async adminUpdateUserStatus(userId: string, subscriptionStatus: string): Promise<{ user: User; message: string }> {
+    return await this.request<{ user: User; message: string }>(`/admin/users/${userId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ subscriptionStatus }),
+    });
+  }
+
+  async deleteSaasUser(userId: string): Promise<void> {
+    try {
+      await this.request(`/saas/users/${userId}`, {
+        method: 'DELETE',
+      });
+      this.removeSavedAccount(userId);
+    } catch {}
+  }
+
+  async deleteMyAccount(): Promise<void> {
+    const user = this.getLocal<User | null>('user', null);
+    if (user) {
+      await this.deleteSaasUser(user.id);
+      this.logout();
     }
   }
 
   logout() {
     this.setToken(null);
     localStorage.removeItem('shdr_user');
+    localStorage.removeItem('shdr_members');
+    localStorage.removeItem('shdr_medicines');
+    localStorage.removeItem('shdr_history');
+    localStorage.removeItem('shdr_impersonating_admin');
   }
 
   // --- MEMBERS ---
@@ -274,7 +424,7 @@ class ApiService {
       this.setLocal('members', data.members);
       return data.members;
     } catch {
-      return this.getLocal<FamilyMember[]>('members', defaultLocalMembers);
+      return this.getLocal<FamilyMember[]>('members', []);
     }
   }
 
@@ -286,10 +436,10 @@ class ApiService {
       });
       return data.member;
     } catch {
-      const members = this.getLocal<FamilyMember[]>('members', defaultLocalMembers);
+      const members = this.getLocal<FamilyMember[]>('members', []);
       const newMember: FamilyMember = {
         id: `mem-${Date.now()}`,
-        userId: 'user-demo-1',
+        userId: 'user-current',
         name: member.name || 'Membro da Família',
         emoji: member.emoji || '👤',
         color: member.color || '#0f766e',
@@ -310,7 +460,7 @@ class ApiService {
       });
       return data.member;
     } catch {
-      const members = this.getLocal<FamilyMember[]>('members', defaultLocalMembers);
+      const members = this.getLocal<FamilyMember[]>('members', []);
       const idx = members.findIndex((m) => m.id === id);
       if (idx >= 0) {
         members[idx] = { ...members[idx], ...updates };
@@ -325,7 +475,7 @@ class ApiService {
     try {
       await this.request(`/members/${id}`, { method: 'DELETE' });
     } catch {
-      const members = this.getLocal<FamilyMember[]>('members', defaultLocalMembers);
+      const members = this.getLocal<FamilyMember[]>('members', []);
       this.setLocal('members', members.filter((m) => m.id !== id));
     }
   }
@@ -338,7 +488,7 @@ class ApiService {
       this.setLocal('medicines', data.medicines);
       return data.medicines;
     } catch {
-      const meds = this.getLocal<Medicine[]>('medicines', defaultLocalMedicines);
+      const meds = this.getLocal<Medicine[]>('medicines', []);
       if (memberId && memberId !== 'all') {
         return meds.filter((m) => m.memberId === memberId);
       }
@@ -354,10 +504,10 @@ class ApiService {
       });
       return data.medicine;
     } catch {
-      const meds = this.getLocal<Medicine[]>('medicines', defaultLocalMedicines);
+      const meds = this.getLocal<Medicine[]>('medicines', []);
       const newMed: Medicine = {
         id: `med-${Date.now()}`,
-        userId: 'user-demo-1',
+        userId: 'user-current',
         memberId: medicine.memberId || 'mem-1',
         name: medicine.name || 'Medicamento',
         dosage: medicine.dosage || '1 dose',
@@ -563,11 +713,14 @@ class ApiService {
         body: JSON.stringify({ planId }),
       });
     } catch {
-      const user = this.getLocal<User>('user', defaultLocalUser);
-      user.plan = planId as any;
-      user.subscriptionStatus = 'active';
-      this.setLocal('user', user);
-      return { user, message: 'Plano ativado com sucesso!' };
+      const user = this.getLocal<User | null>('user', null);
+      if (user) {
+        user.plan = planId as any;
+        user.subscriptionStatus = 'active';
+        this.setLocal('user', user);
+        return { user, message: 'Plano ativado com sucesso!' };
+      }
+      throw new Error('Usuário não autenticado');
     }
   }
 
@@ -577,9 +730,9 @@ class ApiService {
       return await this.request('/backup/export');
     } catch {
       return {
-        user: this.getLocal('user', defaultLocalUser),
-        members: this.getLocal('members', defaultLocalMembers),
-        medicines: this.getLocal('medicines', defaultLocalMedicines),
+        user: this.getLocal('user', null),
+        members: this.getLocal('members', []),
+        medicines: this.getLocal('medicines', []),
         history: this.getLocal('history', []),
         settings: this.getSettings(),
         exportedAt: new Date().toISOString(),
@@ -602,64 +755,78 @@ class ApiService {
   }
 
   // --- AI ASSISTANT ---
-  async askAi(prompt: string, imageBase64?: string, imageMimeType?: string): Promise<string> {
+  async askAi(prompt: string, imageBase64?: string, imageMimeType?: string): Promise<{ answer: string; fromCache?: boolean }> {
+    // 1. Check Local Cache first (0ms latency, zero token consumption)
+    const cached = aiCache.get(prompt, imageBase64);
+    if (cached) {
+      console.log(`[AI Cache] Hit for prompt (used ${cached.hits} times) - 0ms response`);
+      return { answer: cached.answer, fromCache: true };
+    }
+
+    let finalAnswer = '';
+
     try {
       const data = await this.request<{ answer: string }>('/ai/analyze', {
         method: 'POST',
         body: JSON.stringify({ prompt, imageBase64, imageMimeType }),
       });
-      if (data && data.answer) return data.answer;
+      if (data && data.answer) {
+        finalAnswer = data.answer;
+      }
     } catch (err) {
       // Backend unavailable or running in pure static GitHub Pages:
       console.log('Using smart health knowledge base & local AI engine...');
     }
 
     // Check if user set a custom Gemini API Key in browser localStorage
-    const userApiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE);
-    if (userApiKey) {
-      try {
-        const parts: any[] = [];
-        if (imageBase64 && imageMimeType) {
-          parts.push({
-            inline_data: {
-              mime_type: imageMimeType,
-              data: imageBase64,
-            },
-          });
-        }
-        parts.push({ text: prompt });
-
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts }],
-              systemInstruction: {
-                parts: [
-                  {
-                    text: 'Você é o Assistente Especialista de Saúde e Medicamentos do Seu Horário do Remédio. Responda em Português (Brasil) com carinho, formatação clara em tópicos e aviso ético médico.',
-                  },
-                ],
+    if (!finalAnswer) {
+      const userApiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE);
+      if (userApiKey) {
+        try {
+          const parts: any[] = [];
+          if (imageBase64 && imageMimeType) {
+            parts.push({
+              inline_data: {
+                mime_type: imageMimeType,
+                data: imageBase64,
               },
-            }),
+            });
           }
-        );
+          parts.push({ text: prompt });
 
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) return text;
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${userApiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts }],
+                systemInstruction: {
+                  parts: [
+                    {
+                      text: 'Você é o Assistente Especialista de Saúde e Medicamentos do Seu Horário do Remédio. Responda em Português (Brasil) com carinho, formatação clara em tópicos e aviso ético médico.',
+                    },
+                  ],
+                },
+              }),
+            }
+          );
+
+          if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) finalAnswer = text;
+          }
+        } catch (geminiErr) {
+          console.error('Custom Gemini Key error:', geminiErr);
         }
-      } catch (geminiErr) {
-        console.error('Custom Gemini Key error:', geminiErr);
       }
     }
 
     // Comprehensive offline / static knowledge engine
-    if (imageBase64) {
-      return `📷 **Foto de Receita ou Medicamento Recebida!**
+    if (!finalAnswer) {
+      if (imageBase64) {
+        finalAnswer = `📷 **Foto de Receita ou Medicamento Recebida!**
 
 Identifiquei a imagem que você enviou. Para garantir 100% de precisão e segurança na sua saúde:
 
@@ -674,9 +841,17 @@ Identifiquei a imagem que você enviou. Para garantir 100% de precisão e segura
    - Você pode me perguntar: *"Como tomar Amoxicilina sem agredir o estômago?"* ou *"O que fazer se esquecer a dose?"*.
 
 ⚠️ *Aviso: Nunca inicie medicações sem orientação do médico ou cirurgião-dentista prescritor.*`;
+      } else {
+        finalAnswer = getOfflineHealthAdvice(prompt);
+      }
     }
 
-    return getOfflineHealthAdvice(prompt);
+    // Save valid response in Local Cache to prevent future token usage
+    if (finalAnswer) {
+      aiCache.set(prompt, finalAnswer, imageBase64);
+    }
+
+    return { answer: finalAnswer, fromCache: false };
   }
 
   // --- LOCAL SETTINGS ---

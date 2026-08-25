@@ -70,7 +70,7 @@ export const KNOWLEDGE_BASE: AiKnowledgeAnswer[] = [
 4. 🚨 **Persistência dos sintomas:** Se a febre persistir por mais de 3 dias ou a dor por mais de 5 dias, procure atendimento médico.`
   },
   {
-    keywords: ['jejum', 'refeição', 'comida', 'antes de comer', 'depois de comer'],
+    keywords: ['jejum', 'refeição', 'comida', 'antes de comer', 'depois de comer', 'almoço', 'café da manhã'],
     answer: `🍽️ **Jejum x Com Refeição:**
 
 - **Em Jejum (30 a 60 min antes de comer):**
@@ -82,14 +82,54 @@ export const KNOWLEDGE_BASE: AiKnowledgeAnswer[] = [
   - Metformina
   - Suplementos de Ferro e Vitaminas lipossolúveis (A, D, E, K)
   - Antibióticos em geral (para reduzir náuseas)`
+  },
+  {
+    keywords: ['omeprazol', 'pantoprazol', 'esomeprazol', 'gastrite', 'refluxo', 'estômago', 'azia'],
+    answer: `🩺 **Orientações para Protetores Gástricos (Omeprazol, Pantoprazol):**
+
+1. 🌅 **Em Jejum pela Manhã:** Tome o comprimido ou cápsula cerca de 30 a 45 minutos ANTES do café da manhã com um copo de água.
+2. 💊 **Engula inteiro:** Não mastigue, não triture e não abra as cápsulas.
+3. ☕ **Evite cafeína:** Reduza café puro, refrigerantes e alimentos muito ácidos nas primeiras horas do dia.
+4. 🩺 **Tempo de uso:** Use pelo período determinado pelo gastroenterologista; o uso contínuo por anos deve ser acompanhado periodicamente.`
+  },
+  {
+    keywords: ['sinvastatina', 'atorvastatina', 'rosuvastatina', 'colesterol', 'triglicerídeos', 'estatina'],
+    answer: `🩺 **Orientações para Medicamentos de Colesterol (Sinvastatina, Atorvastatina):**
+
+1. 🌙 **Tome à Noite:** A maior parte do colesterol do nosso corpo é sintetizada pelo fígado durante a noite/madrugada. Por isso, a Sinvastatina deve ser tomada antes de dormir.
+2. 🍊 **Cuidado com toranja (grapefruit):** Não tome com suco de toranja, pois aumenta a concentração do remédio no sangue.
+3. 🥩 **Dores musculares:** Se sentir dores ou cansaço muscular intenso e sem explicação, avise seu médico imediatamente.
+4. 🥗 **Alimentação:** Mantenha uma dieta com fibras e pouca gordura saturada para ajudar no tratamento.`
+  },
+  {
+    keywords: ['calmante', 'sono', 'dormir', 'clonazepam', 'rivotril', 'zolpidem', 'ansiedade', 'insônia'],
+    answer: `🩺 **Orientações para Medicamentos do Sono e Ansiedade:**
+
+1. 🌙 **Horário noturno:** Tome cerca de 30 a 60 minutos antes de ir para a cama.
+2. 🚫 **Álcool expressamente proibido:** A mistura com bebidas alcoólicas é muito perigosa e pode causar depressão respiratória grave.
+3. 🚗 **Cuidado ao dirigir:** Esses medicamentos causam sonolência e reflexos lentos nas primeiras horas da manhã.
+4. ⚠️ **Nunca interrompa de repente:** A retirada desses medicamentos deve ser gradual e acompanhada pelo seu médico para evitar efeito rebote.`
+  },
+  {
+    keywords: ['idoso', 'idosos', 'terceira idade', 'vovô', 'vovó', 'muitos remédios', 'organizar'],
+    answer: `👴 **Dicas Especiais para Idosos e Uso de Vários Medicamentos:**
+
+1. ⏰ **Horários fixos com alarmes:** Use nosso aplicativo para programar alarmes sonoros altos e claros para cada familiar.
+2. 💊 **Caixas organizadoras semanais:** Separe as doses por turno (Manhã, Almoço, Tarde, Noite).
+3. 💧 **Atenção à hidratação:** Idosos sentem menos sede; beba água sempre que tomar qualquer medicação.
+4. 📋 **Lista atualizada:** Mantenha a lista do app sempre visível para apresentar nas consultas médicas!`
   }
 ];
 
+function removeAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
 /**
- * Analisa a pergunta do usuário e busca na base de conhecimento farmacêutica
+ * Analisa a pergunta do usuário e busca na base de conhecimento farmacêutica instantaneamente
  */
 export function getOfflineHealthAdvice(query: string): string {
-  const normalized = query.toLowerCase().trim();
+  const normalized = removeAccents(query.trim());
 
   // Search in database
   let bestMatch: AiKnowledgeAnswer | null = null;
@@ -98,8 +138,9 @@ export function getOfflineHealthAdvice(query: string): string {
   for (const item of KNOWLEDGE_BASE) {
     let score = 0;
     for (const kw of item.keywords) {
-      if (normalized.includes(kw.toLowerCase())) {
-        score += kw.length;
+      const cleanKw = removeAccents(kw);
+      if (normalized.includes(cleanKw)) {
+        score += cleanKw.length;
       }
     }
     if (score > maxScore) {
@@ -108,7 +149,7 @@ export function getOfflineHealthAdvice(query: string): string {
     }
   }
 
-  if (bestMatch && maxScore > 3) {
+  if (bestMatch && maxScore >= 3) {
     return bestMatch.answer;
   }
 

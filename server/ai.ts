@@ -2,6 +2,14 @@ import { GoogleGenAI } from '@google/genai';
 
 let aiInstance: GoogleGenAI | null = null;
 
+// Server-side in-memory cache to save tokens and minimize latency
+interface ServerAiCacheItem {
+  answer: string;
+  timestamp: number;
+}
+const serverAiCache = new Map<string, ServerAiCacheItem>();
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
 function getAi(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -11,11 +19,30 @@ function getAi(): GoogleGenAI | null {
   return aiInstance;
 }
 
+function normalizePrompt(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 export async function analyzePrescriptionOrMedicine(params: {
   prompt: string;
   imageBase64?: string;
   imageMimeType?: string;
 }): Promise<string> {
+  // Check server cache first
+  const cacheKey = params.imageBase64
+    ? `img_${params.imageBase64.length}_${normalizePrompt(params.prompt)}`
+    : `txt_${normalizePrompt(params.prompt)}`;
+
+  const cached = serverAiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.answer;
+  }
+
   const ai = getAi();
   if (!ai) {
     return 'Assistente IA não configurado. Adicione sua chave GEMINI_API_KEY no painel de configurações para obter análise inteligente de receitas médicas e bulas.';
@@ -41,7 +68,7 @@ IMPORTANTE: Sempre inclua um aviso ético de que suas orientações não substit
     contents.push(params.prompt);
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       contents: contents,
       config: {
         systemInstruction,
@@ -49,9 +76,21 @@ IMPORTANTE: Sempre inclua um aviso ético de que suas orientações não substit
       }
     });
 
-    return response.text || 'Não foi possível extrair informações no momento.';
+    const result = response.text || 'Não foi possível extrair informações no momento.';
+
+    // Cache valid responses
+    if (result && !result.startsWith('Erro')) {
+      serverAiCache.set(cacheKey, { answer: result, timestamp: Date.now() });
+      if (serverAiCache.size > 500) {
+        const firstKey = serverAiCache.keys().next().value;
+        if (firstKey) serverAiCache.delete(firstKey);
+      }
+    }
+
+    return result;
   } catch (err: any) {
     console.error('Gemini AI error:', err);
     return `Erro ao consultar assistente de IA: ${err.message || 'Falha temporária'}`;
   }
 }
+

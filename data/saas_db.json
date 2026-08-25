@@ -1,0 +1,219 @@
+{
+  "users": [
+    {
+      "id": "user-demo-1",
+      "name": "Dra. Camila Santos",
+      "email": "camila@exemplo.com",
+      "role": "user",
+      "plan": "family",
+      "subscriptionStatus": "active",
+      "createdAt": "2026-08-25T01:11:45.731Z",
+      "maxMeds": 999,
+      "maxMembers": 10
+    },
+    {
+      "id": "user-demo-2",
+      "name": "Marcos Silva",
+      "email": "marcos@exemplo.com",
+      "role": "user",
+      "plan": "pro_monthly",
+      "subscriptionStatus": "active",
+      "createdAt": "2026-08-25T01:11:45.731Z",
+      "maxMeds": 999,
+      "maxMembers": 3
+    },
+    {
+      "id": "user-demo-3",
+      "name": "Usuário Gratuito",
+      "email": "gratis@exemplo.com",
+      "role": "user",
+      "plan": "free",
+      "subscriptionStatus": "none",
+      "createdAt": "2026-08-25T01:11:45.731Z",
+      "maxMeds": 2,
+      "maxMembers": 1
+    },
+    {
+      "id": "user-admin-1",
+      "name": "Administrador SaaS Master",
+      "email": "admin@seuremedio.com",
+      "role": "admin",
+      "plan": "family",
+      "subscriptionStatus": "active",
+      "accountType": "clinic",
+      "organizationName": "Central SaaS SeuRemédio",
+      "createdAt": "2026-08-25T01:17:13.082Z",
+      "maxMeds": 999,
+      "maxMembers": 999
+    },
+    {
+      "id": "usr_dddr3j9",
+      "name": "Ildo Correia de Lima",
+      "email": "ildocorreia63@gmail.com",
+      "role": "admin",
+      "plan": "family",
+      "subscriptionStatus": "active",
+      "accountType": "clinic",
+      "organizationName": "Administração Central SaaS",
+      "createdAt": "2026-08-25T01:47:53.444Z",
+      "maxMeds": 999,
+      "maxMembers": 999
+    }
+  ],
+  "passwords": {
+    "user-demo-1": "$2b$10$mgR2OhBzyQCUYNxjKGqt7uRYZsEsIUQdduNqQwTlq9b8fQLtEqHs6",
+    "user-demo-2": "$2b$10$mgR2OhBzyQCUYNxjKGqt7uRYZsEsIUQdduNqQwTlq9b8fQLtEqHs6",
+    "user-demo-3": "$2b$10$mgR2OhBzyQCUYNxjKGqt7uRYZsEsIUQdduNqQwTlq9b8fQLtEqHs6",
+    "user-admin-1": "$2b$10$agR4i0T1WTC7mICET6NfG.qXgd8q.cxQe83hPII730PWIsgoqgFN6",
+    "usr_dddr3j9": "$2b$10$7zB3c9w78465uK8XN9fPuep8F1V4WvH2B.j8qH8x3c6Y.q/8d1n4m"
+  },
+  "members": [
+    {
+      "id": "mem-1",
+      "userId": "user-demo-1",
+      "name": "Eu (Camila)",
+      "emoji": "👩‍⚕️",
+      "color": "#0f766e",
+      "relation": "Titular",
+      "isDefault": true
+    },
+    {
+      "id": "mem-2",
+      "userId": "user-demo-1",
+      "name": "Vovô João",
+      "emoji": "👴",
+      "color": "#3b82f6",
+      "relation": "Pai"
+    },
+    {
+      "id": "mem-3",
+      "userId": "user-demo-1",
+      "name": "Enzo (Filho)",
+      "emoji": "👦",
+      "color": "#f59e0b",
+      "relation": "Filho"
+    },
+    {
+      "id": "mem-4",
+      "userId": "user-demo-2",
+      "name": "Eu (Marcos)",
+      "emoji": "👨",
+      "color": "#0f766e",
+      "relation": "Titular",
+      "isDefault": true
+    },
+    {
+      "id": "mem-5",
+      "userId": "user-demo-3",
+      "name": "Meu Perfil",
+      "emoji": "👤",
+      "color": "#0f766e",
+      "relation": "Titular",
+      "isDefault": true
+    },
+    {
+      "userId": "user-admin-1",
+      "name": "Admin Master",
+      "emoji": "👑",
+      "color": "#0f766e",
+      "relation": "Administrador",
+      "isDefault": true,
+      "id": "mem_nkgy087"
+    },
+    {
+      "userId": "usr_dddr3j9",
+      "name": "Ildo correia de lima ",
+      "emoji": "👤",
+      "color": "#0f766e",
+      "relation": "Titular",
+      "isDefault": true,
+      "id": "mem_f7bopf2"
+    }
+  ],
+  "medicines": [
+    {
+      "id": "med-1",
+      "userId": "user-demo-1",
+      "memberId": "mem-1",
+      "name": "Losartana Potássica",
+      "dosage": "50mg - 1 comprimido",
+      "quantity": 24,
+      "unit": "comprimidos",
+      "frequencyType": "daily",
+      "times": [
+        "08:00",
+        "20:00"
+      ],
+      "startDate": "2026-08-25",
+      "durationDays": 0,
+      "notes": "Tomar pela manhã e à noite com bastante água.",
+      "doctorName": "Dr. Roberto Mendes",
+      "doctorCrm": "CRM/SP 145890",
+      "prescriptionDate": "2026-08-25",
+      "active": true,
+      "createdAt": "2026-08-25T01:11:45.731Z"
+    },
+    {
+      "id": "med-2",
+      "userId": "user-demo-1",
+      "memberId": "mem-2",
+      "name": "Metformina",
+      "dosage": "850mg",
+      "quantity": 12,
+      "unit": "comprimidos",
+      "frequencyType": "daily",
+      "times": [
+        "12:30"
+      ],
+      "startDate": "2026-08-25",
+      "durationDays": 0,
+      "notes": "Tomar junto ao almoço para evitar desconforto.",
+      "doctorName": "Dra. Alice Ribeiro",
+      "doctorCrm": "CRM/SP 98745",
+      "prescriptionDate": "2026-08-25",
+      "active": true,
+      "createdAt": "2026-08-25T01:11:45.731Z"
+    },
+    {
+      "id": "med-3",
+      "userId": "user-demo-1",
+      "memberId": "mem-3",
+      "name": "Amoxicilina + Clavulanato",
+      "dosage": "250mg/5ml - 5ml",
+      "quantity": 70,
+      "unit": "ml",
+      "frequencyType": "interval",
+      "intervalHours": 8,
+      "intervalStartTime": "07:00",
+      "times": [
+        "07:00",
+        "15:00",
+        "23:00"
+      ],
+      "startDate": "2026-08-25",
+      "durationDays": 7,
+      "notes": "Agitar bem o frasco antes de dosar.",
+      "doctorName": "Dr. Lucas Pediatra",
+      "doctorCrm": "CRM/SP 65432",
+      "prescriptionDate": "2026-08-25",
+      "active": true,
+      "createdAt": "2026-08-25T01:11:45.731Z"
+    }
+  ],
+  "history": [
+    {
+      "id": "hist-1",
+      "userId": "user-demo-1",
+      "medicineId": "med-1",
+      "medicineName": "Losartana Potássica",
+      "memberId": "mem-1",
+      "memberName": "Eu (Camila)",
+      "memberEmoji": "👩‍⚕️",
+      "scheduledTime": "08:00",
+      "scheduledDate": "2026-08-25",
+      "status": "taken",
+      "takenAt": "2026-08-24T22:11:45.731Z",
+      "notes": "Tomado pontualmente com água"
+    }
+  ]
+}

@@ -56,7 +56,7 @@ async function startServer() {
   // --- AUTH ENDPOINTS ---
   app.post('/api/auth/register', (req, res) => {
     try {
-      const { name, email, password, plan } = req.body;
+      const { name, email, password, plan, role, accountType, organizationName } = req.body;
       if (!email || !password) {
         return res.status(400).json({ error: 'E-mail e senha são obrigatórios' });
       }
@@ -67,7 +67,15 @@ async function startServer() {
       }
 
       const passwordHash = bcrypt.hashSync(password, 10);
-      const user = db.createUser(name || email.split('@')[0], email, passwordHash, plan || 'free');
+      const user = db.createUser(
+        name || email.split('@')[0], 
+        email, 
+        passwordHash, 
+        plan || 'free',
+        role || 'user',
+        accountType || 'personal',
+        organizationName
+      );
 
       const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
 
@@ -106,16 +114,19 @@ async function startServer() {
   app.post('/api/auth/demo-login', (req, res) => {
     try {
       const { demoUserId } = req.body;
-      const targetId = demoUserId || 'user-demo-1';
-      const user = db.getUserById(targetId);
+      const targetId = demoUserId || 'user-admin-ildo';
+      let user = db.getUserById(targetId);
+      if (!user && (targetId === 'user-admin-ildo' || targetId.includes('ildo'))) {
+        user = db.getUserByEmail('ildocorreia63@gmail.com');
+      }
       if (!user) {
-        return res.status(404).json({ error: 'Usuário de demonstração não encontrado' });
+        return res.status(404).json({ error: 'Usuário não encontrado' });
       }
 
       const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
       res.json({ user, token });
     } catch (err: any) {
-      res.status(500).json({ error: 'Falha ao entrar como demo' });
+      res.status(500).json({ error: 'Falha ao entrar' });
     }
   });
 
@@ -135,6 +146,152 @@ async function startServer() {
     }
   });
 
+  // --- SAAS & ADMIN MANAGEMENT ---
+  app.get('/api/saas/stats', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Permissão negada. Apenas administradores têm acesso às estatísticas gerais do sistema.' });
+      }
+      const stats = db.getSaasStats();
+      res.json(stats);
+    } catch (err) {
+      res.status(500).json({ error: 'Falha ao obter estatísticas do SaaS' });
+    }
+  });
+
+  app.get('/api/saas/users', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Permissão negada. Apenas administradores podem listar todos os usuários.' });
+      }
+      const users = db.getAllUsers().map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        plan: u.plan,
+        subscriptionStatus: u.subscriptionStatus,
+        accountType: u.accountType,
+        organizationName: u.organizationName,
+        createdAt: u.createdAt,
+        maxMeds: u.maxMeds,
+        maxMembers: u.maxMembers
+      }));
+      res.json({ users });
+    } catch (err) {
+      res.status(500).json({ error: 'Falha ao listar usuários do SaaS' });
+    }
+  });
+
+  // Admin endpoint to get full details of a specific user (including their family members, medicines, history)
+  app.get('/api/admin/users/:userId/details', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Permissão negada. Apenas administradores podem visualizar dados de outros usuários.' });
+      }
+      const details = db.getUserFullDetails(req.params.userId);
+      if (!details) {
+        return res.status(404).json({ error: 'Usuário não encontrado' });
+      }
+      res.json(details);
+    } catch (err) {
+      res.status(500).json({ error: 'Falha ao obter detalhes do usuário' });
+    }
+  });
+
+  // Admin endpoint to impersonate/switch into any user account
+  app.post('/api/admin/users/:userId/impersonate', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Permissão negada. Apenas administradores podem alternar para outras contas.' });
+      }
+      const targetUser = db.getUserById(req.params.userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: 'Usuário não encontrado' });
+      }
+
+      const token = jwt.sign({ id: targetUser.id, email: targetUser.email }, JWT_SECRET, { expiresIn: '30d' });
+      res.json({ user: targetUser, token });
+    } catch (err) {
+      res.status(500).json({ error: 'Falha ao alternar usuário' });
+    }
+  });
+
+  // Admin endpoint to update any user's plan
+  app.put('/api/admin/users/:userId/plan', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Permissão negada' });
+      }
+      const { plan } = req.body;
+      if (!['free', 'pro_monthly', 'pro_yearly', 'family'].includes(plan)) {
+        return res.status(400).json({ error: 'Plano inválido' });
+      }
+      const updated = db.updateUserPlan(req.params.userId, plan);
+      if (!updated) {
+        return res.status(404).json({ error: 'Usuário não encontrado' });
+      }
+      res.json({ user: updated, message: 'Plano do usuário atualizado com sucesso' });
+    } catch (err) {
+      res.status(500).json({ error: 'Falha ao atualizar plano do usuário' });
+    }
+  });
+
+  // Admin endpoint to update any user's role
+  app.put('/api/admin/users/:userId/role', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Permissão negada' });
+      }
+      const { role } = req.body;
+      if (!['user', 'caregiver', 'admin'].includes(role)) {
+        return res.status(400).json({ error: 'Função inválida' });
+      }
+      const updated = db.updateUserRole(req.params.userId, role);
+      if (!updated) {
+        return res.status(404).json({ error: 'Usuário não encontrado' });
+      }
+      res.json({ user: updated, message: 'Função do usuário atualizada com sucesso' });
+    } catch (err) {
+      res.status(500).json({ error: 'Falha ao atualizar função do usuário' });
+    }
+  });
+
+  // Admin endpoint to update any user's financial/subscription status (Em Dia, Em Débito, Bloqueado)
+  app.put('/api/admin/users/:userId/status', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Permissão negada' });
+      }
+      const { subscriptionStatus } = req.body;
+      if (!['active', 'trialing', 'past_due', 'canceled', 'none'].includes(subscriptionStatus)) {
+        return res.status(400).json({ error: 'Status financeiro inválido' });
+      }
+      const updated = db.updateUserSubscriptionStatus(req.params.userId, subscriptionStatus);
+      if (!updated) {
+        return res.status(404).json({ error: 'Usuário não encontrado' });
+      }
+      res.json({ user: updated, message: 'Status financeiro do usuário atualizado com sucesso' });
+    } catch (err) {
+      res.status(500).json({ error: 'Falha ao atualizar status financeiro do usuário' });
+    }
+  });
+
+  app.delete('/api/saas/users/:id', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      if (req.user?.role !== 'admin' && req.user?.id !== req.params.id) {
+        return res.status(403).json({ error: 'Permissão negada. Apenas administradores podem excluir outros usuários.' });
+      }
+      const success = db.deleteUserAccount(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: 'Usuário não encontrado' });
+      }
+      res.json({ success: true, message: 'Usuário excluído com sucesso' });
+    } catch (err) {
+      res.status(500).json({ error: 'Falha ao excluir usuário' });
+    }
+  });
+
   // --- FAMILY MEMBERS ---
   app.get('/api/members', authenticateToken, (req: AuthRequest, res) => {
     const members = db.getMembers(req.user!.id);
@@ -142,6 +299,13 @@ async function startServer() {
   });
 
   app.post('/api/members', authenticateToken, (req: AuthRequest, res) => {
+    if (req.user?.role !== 'admin' && req.user?.subscriptionStatus === 'canceled') {
+      return res.status(403).json({
+        error: 'Sua conta está bloqueada por pendência financeira. Regularize sua assinatura para adicionar novos membros.',
+        blocked: true
+      });
+    }
+
     const currentMembers = db.getMembers(req.user!.id);
     if (currentMembers.length >= req.user!.maxMembers) {
       return res.status(403).json({
@@ -192,6 +356,13 @@ async function startServer() {
   });
 
   app.post('/api/medicines', authenticateToken, (req: AuthRequest, res) => {
+    if (req.user?.role !== 'admin' && req.user?.subscriptionStatus === 'canceled') {
+      return res.status(403).json({
+        error: 'Sua conta está bloqueada por pendência financeira. Regularize sua assinatura para cadastrar novos medicamentos.',
+        blocked: true
+      });
+    }
+
     const currentMeds = db.getMedicines(req.user!.id);
     if (currentMeds.length >= req.user!.maxMeds) {
       return res.status(403).json({

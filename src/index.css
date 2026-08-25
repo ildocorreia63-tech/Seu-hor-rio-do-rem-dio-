@@ -1,10 +1,24 @@
 @import "tailwindcss";
 
 @layer base {
+  html {
+    font-size: 16px;
+  }
+  
+  html.font-size-large {
+    font-size: 17.5px;
+  }
+
+  html.font-size-extra-large {
+    font-size: 19.5px;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
   }
 
   input, textarea, select, button {
@@ -12,20 +26,26 @@
   }
 }
 
+/* Accessibility & High Legibility */
+.senior-text-boost {
+  line-height: 1.65 !important;
+  letter-spacing: 0.01em !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(15, 118, 110, 0.2);
+  background: rgba(15, 118, 110, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 118, 110, 0.4);
+  background: rgba(15, 118, 110, 0.5);
 }
 
 /* Pulse ringing animation for alarm */

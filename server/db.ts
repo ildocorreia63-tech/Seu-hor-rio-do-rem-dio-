@@ -18,22 +18,25 @@ const DB_FILE = path.join(DATA_DIR, 'saas_db.json');
 const initialUsers: User[] = [
   {
     id: 'user-demo-1',
-    name: 'Dra. Camila Santos',
+    name: 'Dra. Camila Santos (Clínica)',
     email: 'camila@exemplo.com',
-    role: 'user',
+    role: 'caregiver',
     plan: 'family',
     subscriptionStatus: 'active',
+    accountType: 'clinic',
+    organizationName: 'Clínica & Cuidados Integrados',
     createdAt: new Date().toISOString(),
     maxMeds: 999,
     maxMembers: 10,
   },
   {
     id: 'user-demo-2',
-    name: 'Marcos Silva',
+    name: 'Marcos Silva (Pessoal)',
     email: 'marcos@exemplo.com',
     role: 'user',
     plan: 'pro_monthly',
     subscriptionStatus: 'active',
+    accountType: 'personal',
     createdAt: new Date().toISOString(),
     maxMeds: 999,
     maxMembers: 3,
@@ -45,9 +48,23 @@ const initialUsers: User[] = [
     role: 'user',
     plan: 'free',
     subscriptionStatus: 'none',
+    accountType: 'personal',
     createdAt: new Date().toISOString(),
     maxMeds: 2,
     maxMembers: 1,
+  },
+  {
+    id: 'user-admin-1',
+    name: 'Administrador SaaS Master',
+    email: 'admin@seuremedio.com',
+    role: 'admin',
+    plan: 'family',
+    subscriptionStatus: 'active',
+    accountType: 'clinic',
+    organizationName: 'Central SaaS SeuRemédio',
+    createdAt: new Date().toISOString(),
+    maxMeds: 999,
+    maxMembers: 999,
   }
 ];
 
@@ -201,16 +218,111 @@ class Database {
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         this.data = JSON.parse(raw);
+
+        // Ensure Ildo Correia de Lima is Admin Master
+        const ildoPasswordHash = bcrypt.hashSync('Patty641210', 10);
+        const existingIldo = this.data.users.find(u => u.email.toLowerCase() === 'ildocorreia63@gmail.com');
+        if (existingIldo) {
+          existingIldo.name = 'Ildo Correia de Lima';
+          existingIldo.role = 'admin';
+          existingIldo.plan = 'family';
+          existingIldo.subscriptionStatus = 'active';
+          existingIldo.maxMeds = 999;
+          existingIldo.maxMembers = 999;
+          this.data.passwords[existingIldo.id] = ildoPasswordHash;
+        } else {
+          const ildoId = 'user-admin-ildo';
+          const ildoUser: User = {
+            id: ildoId,
+            name: 'Ildo Correia de Lima',
+            email: 'ildocorreia63@gmail.com',
+            role: 'admin',
+            plan: 'family',
+            subscriptionStatus: 'active',
+            accountType: 'clinic',
+            organizationName: 'Administração Central SaaS',
+            createdAt: new Date().toISOString(),
+            maxMeds: 999,
+            maxMembers: 999,
+          };
+          this.data.users.push(ildoUser);
+          this.data.passwords[ildoId] = ildoPasswordHash;
+          this.createMember({
+            userId: ildoId,
+            name: 'Ildo Correia de Lima',
+            emoji: '👑',
+            color: '#0f766e',
+            relation: 'Administrador Geral',
+            isDefault: true
+          });
+        }
+
+        // Ensure default admin user exists even if db file was previously created
+        if (!this.data.users.some(u => u.id === 'user-admin-1')) {
+          const defaultHash = bcrypt.hashSync('123456', 10);
+          const adminUser: User = {
+            id: 'user-admin-1',
+            name: 'Administrador SaaS Master',
+            email: 'admin@seuremedio.com',
+            role: 'admin',
+            plan: 'family',
+            subscriptionStatus: 'active',
+            accountType: 'clinic',
+            organizationName: 'Central SaaS SeuRemédio',
+            createdAt: new Date().toISOString(),
+            maxMeds: 999,
+            maxMembers: 999,
+          };
+          this.data.users.push(adminUser);
+          this.data.passwords['user-admin-1'] = defaultHash;
+          this.createMember({
+            userId: 'user-admin-1',
+            name: 'Admin Master',
+            emoji: '👑',
+            color: '#0f766e',
+            relation: 'Administrador',
+            isDefault: true
+          });
+        }
+        this.save();
       } else {
         const defaultHash = bcrypt.hashSync('123456', 10);
+        const ildoHash = bcrypt.hashSync('Patty641210', 10);
+        const ildoUser: User = {
+          id: 'user-admin-ildo',
+          name: 'Ildo Correia de Lima',
+          email: 'ildocorreia63@gmail.com',
+          role: 'admin',
+          plan: 'family',
+          subscriptionStatus: 'active',
+          accountType: 'clinic',
+          organizationName: 'Administração Central SaaS',
+          createdAt: new Date().toISOString(),
+          maxMeds: 999,
+          maxMembers: 999,
+        };
+
         this.data = {
-          users: initialUsers,
+          users: [ildoUser, ...initialUsers],
           passwords: {
+            'user-admin-ildo': ildoHash,
             'user-demo-1': defaultHash,
             'user-demo-2': defaultHash,
             'user-demo-3': defaultHash,
+            'user-admin-1': defaultHash,
           },
-          members: initialMembers,
+          members: [
+            {
+              id: 'mem-ildo-1',
+              userId: 'user-admin-ildo',
+              name: 'Ildo Correia de Lima',
+              emoji: '👑',
+              color: '#0f766e',
+              relation: 'Administrador Geral',
+              isDefault: true,
+            },
+            ...initialMembers
+          ],
           medicines: initialMedicines,
           history: initialHistory
         };
@@ -245,7 +357,15 @@ class Database {
     return this.data.passwords[userId];
   }
 
-  createUser(name: string, email: string, passwordHash: string, plan: User['plan'] = 'free'): User {
+  createUser(
+    name: string, 
+    email: string, 
+    passwordHash: string, 
+    plan: User['plan'] = 'free',
+    role: User['role'] = 'user',
+    accountType: User['accountType'] = 'personal',
+    organizationName?: string
+  ): User {
     const id = 'usr_' + Math.random().toString(36).substring(2, 9);
     const maxMeds = plan === 'free' ? 2 : 999;
     const maxMembers = plan === 'family' ? 10 : plan === 'pro_monthly' || plan === 'pro_yearly' ? 3 : 1;
@@ -254,9 +374,11 @@ class Database {
       id,
       name,
       email: email.toLowerCase(),
-      role: 'user',
+      role: role || (email.toLowerCase().includes('admin') ? 'admin' : 'user'),
       plan,
       subscriptionStatus: plan === 'free' ? 'none' : 'active',
+      accountType: accountType || 'personal',
+      organizationName: organizationName || undefined,
       createdAt: new Date().toISOString(),
       maxMeds,
       maxMembers
@@ -269,7 +391,7 @@ class Database {
     this.createMember({
       userId: id,
       name: name || 'Meu Perfil',
-      emoji: '👤',
+      emoji: accountType === 'clinic' ? '🏥' : role === 'caregiver' ? '🩺' : '👤',
       color: '#0f766e',
       relation: 'Titular',
       isDefault: true
@@ -277,6 +399,105 @@ class Database {
 
     this.save();
     return newUser;
+  }
+
+  getAllUsers(): User[] {
+    return this.data.users;
+  }
+
+  getSaasStats() {
+    const totalUsers = this.data.users.length;
+    const activeSubscriptions = this.data.users.filter(u => u.subscriptionStatus === 'active' && u.plan !== 'free').length;
+    const pastDueSubscriptions = this.data.users.filter(u => u.subscriptionStatus === 'past_due').length;
+    const canceledSubscriptions = this.data.users.filter(u => u.subscriptionStatus === 'canceled' && u.plan !== 'free').length;
+    
+    // Calculate approximate MRR (R$)
+    let estimatedMrr = 0;
+    const planDistribution = {
+      free: 0,
+      pro_monthly: 0,
+      pro_yearly: 0,
+      family: 0
+    };
+
+    for (const u of this.data.users) {
+      if (u.plan === 'free') {
+        planDistribution.free++;
+      } else if (u.plan === 'pro_monthly') {
+        planDistribution.pro_monthly++;
+        if (u.subscriptionStatus === 'active') estimatedMrr += 19.90;
+      } else if (u.plan === 'pro_yearly') {
+        planDistribution.pro_yearly++;
+        if (u.subscriptionStatus === 'active') estimatedMrr += 199.90 / 12;
+      } else if (u.plan === 'family') {
+        planDistribution.family++;
+        if (u.subscriptionStatus === 'active') estimatedMrr += 39.90;
+      }
+    }
+
+    const totalMedicines = this.data.medicines.length;
+    const totalDosesRecorded = this.data.history.length;
+
+    const usersList = this.data.users.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      plan: u.plan,
+      subscriptionStatus: u.subscriptionStatus || (u.plan === 'free' ? 'none' : 'active'),
+      createdAt: u.createdAt,
+      medicinesCount: this.data.medicines.filter(m => m.userId === u.id).length,
+      membersCount: this.data.members.filter(m => m.userId === u.id).length
+    }));
+
+    return {
+      totalUsers,
+      activeSubscriptions,
+      pastDueSubscriptions,
+      canceledSubscriptions,
+      estimatedMrr: Math.round(estimatedMrr * 100) / 100,
+      totalMedicines,
+      totalDosesRecorded,
+      planDistribution,
+      usersList
+    };
+  }
+
+  deleteUserAccount(userId: string): boolean {
+    const uIndex = this.data.users.findIndex(u => u.id === userId);
+    if (uIndex === -1) return false;
+    this.data.users.splice(uIndex, 1);
+    delete this.data.passwords[userId];
+    this.data.members = this.data.members.filter(m => m.userId !== userId);
+    this.data.medicines = this.data.medicines.filter(m => m.userId !== userId);
+    this.data.history = this.data.history.filter(h => h.userId !== userId);
+    this.save();
+    return true;
+  }
+
+  getUserFullDetails(userId: string) {
+    const user = this.data.users.find(u => u.id === userId);
+    if (!user) return null;
+    const members = this.data.members.filter(m => m.userId === userId);
+    const medicines = this.data.medicines.filter(m => m.userId === userId);
+    const history = this.data.history
+      .filter(h => h.userId === userId)
+      .sort((a, b) => new Date(b.takenAt || b.scheduledDate).getTime() - new Date(a.takenAt || a.scheduledDate).getTime());
+
+    return {
+      user,
+      members,
+      medicines,
+      history
+    };
+  }
+
+  updateUserRole(userId: string, role: User['role']): User | null {
+    const user = this.data.users.find(u => u.id === userId);
+    if (!user) return null;
+    user.role = role;
+    this.save();
+    return user;
   }
 
   updateUserPlan(userId: string, plan: User['plan'], stripeCustomerId?: string, stripeSubscriptionId?: string): User | null {
@@ -291,6 +512,14 @@ class Database {
     user.maxMeds = plan === 'free' ? 2 : 999;
     user.maxMembers = plan === 'family' ? 10 : plan === 'pro_monthly' || plan === 'pro_yearly' ? 3 : 1;
 
+    this.save();
+    return user;
+  }
+
+  updateUserSubscriptionStatus(userId: string, subscriptionStatus: User['subscriptionStatus']): User | null {
+    const user = this.data.users.find(u => u.id === userId);
+    if (!user) return null;
+    user.subscriptionStatus = subscriptionStatus;
     this.save();
     return user;
   }
