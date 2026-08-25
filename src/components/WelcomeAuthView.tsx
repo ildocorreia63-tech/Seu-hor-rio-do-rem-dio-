@@ -99,22 +99,6 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
     }
   };
 
-  const handleQuickAdminLogin = async () => {
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      if (onDemoLogin) {
-        await onDemoLogin('user-admin-ildo');
-      } else {
-        await onLogin('ildocorreia63@gmail.com', 'Patty641210');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao conectar conta de administração.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="w-full max-w-xl mx-auto space-y-6 animate-in fade-in duration-300 pb-12">
       
@@ -332,19 +316,6 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
             )}
           </button>
         </form>
-
-        {/* Discreet Master Admin Option for the Owner */}
-        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
-          <span>É o Administrador do Sistema?</span>
-          <button
-            type="button"
-            onClick={handleQuickAdminLogin}
-            className="text-teal-700 dark:text-teal-400 font-bold hover:underline flex items-center gap-1"
-          >
-            <Crown className="w-3 h-3 text-amber-500" />
-            <span>Acesso Administrador Master</span>
-          </button>
-        </div>
       </div>
 
       {/* Feature Highlights Grid */}
