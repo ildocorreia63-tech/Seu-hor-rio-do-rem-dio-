@@ -26,7 +26,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onUpdateProfile,
   onLogout,
 }) => {
-  const [tab, setTab] = useState<'login' | 'register' | 'switch' | 'profile'>(user ? 'switch' : 'register');
+  const [tab, setTab] = useState<'login' | 'register' | 'switch' | 'profile'>(user ? 'switch' : 'login');
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');

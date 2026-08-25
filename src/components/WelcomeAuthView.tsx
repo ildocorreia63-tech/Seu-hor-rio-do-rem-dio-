@@ -39,7 +39,7 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
   onDemoLogin,
   onOpenPricing,
 }) => {
-  const [tab, setTab] = useState<'register' | 'login'>('register');
+  const [tab, setTab] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,10 +48,12 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
   const [accountType, setAccountType] = useState<'personal' | 'family' | 'clinic'>('personal');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setInfoMsg('');
 
     if (tab === 'register') {
       if (!name.trim()) {
@@ -84,7 +86,7 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
         await onRegister(
           name.trim(), 
           email.trim().toLowerCase(), 
-          password, 
+          password.trim(), 
           'free', 
           role, 
           accountType
@@ -93,7 +95,13 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
         await onLogin(email.trim().toLowerCase(), password.trim());
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao processar. Verifique os dados e tente novamente.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('já cadastrado') || msg.toLowerCase().includes('already exists') || email.trim().toLowerCase() === 'ildocorreia63@gmail.com') {
+        setTab('login');
+        setInfoMsg('Essa conta já existe! Digite sua senha abaixo para entrar.');
+      } else {
+        setErrorMsg(msg || 'Erro ao processar. Verifique os dados e tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -171,6 +179,13 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-bold animate-in fade-in">
               {errorMsg}
+            </div>
+          )}
+
+          {infoMsg && (
+            <div className="p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-bold animate-in fade-in flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+              <span>{infoMsg}</span>
             </div>
           )}
 
