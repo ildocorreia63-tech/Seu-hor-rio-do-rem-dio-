@@ -534,117 +534,197 @@ class ApiService {
     try {
       return await this.request<SaasStats>('/saas/stats');
     } catch {
-      // Local fallback mock stats
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const meds = this.getLocal<Medicine[]>('medicines', []);
+      const history = this.getLocal<DoseRecord[]>('history', []);
+      const members = this.getLocal<FamilyMember[]>('members', []);
+
+      let activeSubs = 0;
+      let pastDueSubs = 0;
+      let canceledSubs = 0;
+      let mrr = 0;
+      const planDistribution = {
+        free: 0,
+        pro_monthly: 0,
+        pro_yearly: 0,
+        family: 0,
+      };
+
+      for (const u of users) {
+        if (u.plan === 'free') {
+          planDistribution.free++;
+        } else if (u.plan === 'pro_monthly') {
+          planDistribution.pro_monthly++;
+          if (u.subscriptionStatus === 'active') mrr += 19.90;
+        } else if (u.plan === 'pro_yearly') {
+          planDistribution.pro_yearly++;
+          if (u.subscriptionStatus === 'active') mrr += 199.90 / 12;
+        } else if (u.plan === 'family') {
+          planDistribution.family++;
+          if (u.subscriptionStatus === 'active') mrr += 39.90;
+        }
+
+        if (u.subscriptionStatus === 'active' && u.plan !== 'free') activeSubs++;
+        if (u.subscriptionStatus === 'past_due') pastDueSubs++;
+        if (u.subscriptionStatus === 'canceled' && u.plan !== 'free') canceledSubs++;
+      }
+
       return {
-        totalUsers: 5,
-        activeSubscriptions: 4,
-        estimatedMrr: 139.60,
-        totalMedicines: 8,
-        totalDosesRecorded: 15,
-        planDistribution: {
-          free: 1,
-          pro_monthly: 1,
-          pro_yearly: 0,
-          family: 3,
-        },
-        usersList: [
-          {
-            id: 'user-admin-ildo',
-            name: 'Ildo Correia de Lima',
-            email: 'ildocorreia63@gmail.com',
-            role: 'admin',
-            plan: 'family',
-            subscriptionStatus: 'active',
-            createdAt: new Date().toISOString(),
-            medicinesCount: 3,
-            membersCount: 1,
-          },
-          {
-            id: 'user-demo-1',
-            name: 'Dra. Camila Santos (Clínica)',
-            email: 'camila@exemplo.com',
-            role: 'caregiver',
-            plan: 'family',
-            subscriptionStatus: 'active',
-            createdAt: new Date().toISOString(),
-            medicinesCount: 3,
-            membersCount: 3,
-          },
-          {
-            id: 'user-demo-2',
-            name: 'Marcos Silva (Pessoal)',
-            email: 'marcos@exemplo.com',
-            role: 'user',
-            plan: 'pro_monthly',
-            subscriptionStatus: 'active',
-            createdAt: new Date().toISOString(),
-            medicinesCount: 1,
-            membersCount: 1,
-          },
-          {
-            id: 'user-demo-3',
-            name: 'Usuário Gratuito',
-            email: 'gratis@exemplo.com',
-            role: 'user',
-            plan: 'free',
-            subscriptionStatus: 'none',
-            createdAt: new Date().toISOString(),
-            medicinesCount: 1,
-            membersCount: 1,
-          },
-          {
-            id: 'user-admin-1',
-            name: 'Administrador SaaS Master',
-            email: 'admin@seuremedio.com',
-            role: 'admin',
-            plan: 'family',
-            subscriptionStatus: 'active',
-            createdAt: new Date().toISOString(),
-            medicinesCount: 3,
-            membersCount: 3,
-          }
-        ]
+        totalUsers: users.length,
+        activeSubscriptions: activeSubs,
+        pastDueSubscriptions: pastDueSubs,
+        canceledSubscriptions: canceledSubs,
+        estimatedMrr: Math.round(mrr * 100) / 100,
+        totalMedicines: meds.length,
+        totalDosesRecorded: history.length,
+        planDistribution,
+        usersList: users.map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          plan: u.plan,
+          subscriptionStatus: u.subscriptionStatus || (u.plan === 'free' ? 'none' : 'active'),
+          createdAt: u.createdAt,
+          medicinesCount: meds.filter(m => m.userId === u.id).length,
+          membersCount: members.filter(m => m.userId === u.id).length || 1,
+        }))
       };
     }
   }
 
   async getSaasUsers(): Promise<{ users: User[] }> {
-    return await this.request<{ users: User[] }>('/saas/users');
+    try {
+      return await this.request<{ users: User[] }>('/saas/users');
+    } catch {
+      this.ensureSeedData();
+      return { users: this.getLocalUsers() };
+    }
   }
 
   async getAdminUserDetails(userId: string): Promise<{ user: User; members: FamilyMember[]; medicines: Medicine[]; history: DoseRecord[] }> {
-    return await this.request<{ user: User; members: FamilyMember[]; medicines: Medicine[]; history: DoseRecord[] }>(`/admin/users/${userId}/details`);
+    try {
+      return await this.request<{ user: User; members: FamilyMember[]; medicines: Medicine[]; history: DoseRecord[] }>(`/admin/users/${userId}/details`);
+    } catch {
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const user = users.find(u => u.id === userId) || users[0];
+      const members = this.getLocal<FamilyMember[]>('members', []).filter(m => m.userId === userId);
+      const medicines = this.getLocal<Medicine[]>('medicines', []).filter(m => m.userId === userId);
+      const history = this.getLocal<DoseRecord[]>('history', []).filter(h => h.userId === userId);
+      return { user, members, medicines, history };
+    }
   }
 
   async adminImpersonate(userId: string): Promise<{ user: User; token: string }> {
-    const data = await this.request<{ user: User; token: string }>(`/admin/users/${userId}/impersonate`, {
-      method: 'POST',
-    });
-    this.setToken(data.token);
-    this.setLocal('user', data.user);
-    this.saveAccount(data.user, data.token);
-    return data;
+    try {
+      const data = await this.request<{ user: User; token: string }>(`/admin/users/${userId}/impersonate`, {
+        method: 'POST',
+      });
+      this.setToken(data.token);
+      this.setLocal('user', data.user);
+      this.saveAccount(data.user, data.token);
+      return data;
+    } catch {
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const targetUser = users.find(u => u.id === userId);
+      if (!targetUser) {
+        throw new Error('Usuário não encontrado');
+      }
+      const token = `impersonate_${targetUser.id}_${Date.now()}`;
+      this.setToken(token);
+      this.setLocal('user', targetUser);
+      this.saveAccount(targetUser, token);
+      return { user: targetUser, token };
+    }
   }
 
   async adminUpdateUserPlan(userId: string, plan: string): Promise<{ user: User; message: string }> {
-    return await this.request<{ user: User; message: string }>(`/admin/users/${userId}/plan`, {
-      method: 'PUT',
-      body: JSON.stringify({ plan }),
-    });
+    try {
+      const res = await this.request<{ user: User; message: string }>(`/admin/users/${userId}/plan`, {
+        method: 'PUT',
+        body: JSON.stringify({ plan }),
+      });
+      // Sync local
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx !== -1) {
+        users[idx].plan = plan as any;
+        users[idx].subscriptionStatus = plan === 'free' ? 'canceled' : 'active';
+        this.saveLocalUsers(users);
+      }
+      return res;
+    } catch {
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx === -1) {
+        throw new Error('Usuário não encontrado');
+      }
+      users[idx].plan = plan as any;
+      users[idx].subscriptionStatus = plan === 'free' ? 'canceled' : 'active';
+      users[idx].maxMeds = plan === 'free' ? 2 : 999;
+      users[idx].maxMembers = plan === 'family' ? 10 : plan === 'pro_monthly' || plan === 'pro_yearly' ? 3 : 1;
+      this.saveLocalUsers(users);
+      return { user: users[idx], message: 'Plano atualizado com sucesso!' };
+    }
   }
 
   async adminUpdateUserRole(userId: string, role: string): Promise<{ user: User; message: string }> {
-    return await this.request<{ user: User; message: string }>(`/admin/users/${userId}/role`, {
-      method: 'PUT',
-      body: JSON.stringify({ role }),
-    });
+    try {
+      const res = await this.request<{ user: User; message: string }>(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role }),
+      });
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx !== -1) {
+        users[idx].role = role as any;
+        this.saveLocalUsers(users);
+      }
+      return res;
+    } catch {
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx === -1) {
+        throw new Error('Usuário não encontrado');
+      }
+      users[idx].role = role as any;
+      this.saveLocalUsers(users);
+      return { user: users[idx], message: 'Função atualizada com sucesso!' };
+    }
   }
 
   async adminUpdateUserStatus(userId: string, subscriptionStatus: string): Promise<{ user: User; message: string }> {
-    return await this.request<{ user: User; message: string }>(`/admin/users/${userId}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ subscriptionStatus }),
-    });
+    try {
+      const res = await this.request<{ user: User; message: string }>(`/admin/users/${userId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ subscriptionStatus }),
+      });
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx !== -1) {
+        users[idx].subscriptionStatus = subscriptionStatus as any;
+        this.saveLocalUsers(users);
+      }
+      return res;
+    } catch {
+      this.ensureSeedData();
+      const users = this.getLocalUsers();
+      const idx = users.findIndex(u => u.id === userId);
+      if (idx === -1) {
+        throw new Error('Usuário não encontrado');
+      }
+      users[idx].subscriptionStatus = subscriptionStatus as any;
+      this.saveLocalUsers(users);
+      return { user: users[idx], message: 'Status financeiro atualizado com sucesso!' };
+    }
   }
 
   async deleteSaasUser(userId: string): Promise<void> {
@@ -652,8 +732,31 @@ class ApiService {
       await this.request(`/saas/users/${userId}`, {
         method: 'DELETE',
       });
+    } catch {
+      // Offline / fallback deletion
+    } finally {
+      this.ensureSeedData();
+      const users = this.getLocalUsers().filter(u => u.id !== userId);
+      this.saveLocalUsers(users);
+
+      // Clean passwords
+      const pwds = this.getLocalPasswords();
+      delete pwds[userId];
+      this.saveLocalPasswords(pwds);
+
+      // Remove from saved accounts
       this.removeSavedAccount(userId);
-    } catch {}
+
+      // Clean user data from local storage
+      const meds = this.getLocal<Medicine[]>('medicines', []);
+      this.setLocal('medicines', meds.filter(m => m.userId !== userId));
+
+      const history = this.getLocal<DoseRecord[]>('history', []);
+      this.setLocal('history', history.filter(h => h.userId !== userId));
+
+      const members = this.getLocal<FamilyMember[]>('members', []);
+      this.setLocal('members', members.filter(m => m.userId !== userId));
+    }
   }
 
   async deleteMyAccount(): Promise<void> {
