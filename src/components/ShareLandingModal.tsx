@@ -168,8 +168,13 @@ export const ShareLandingModal: React.FC<ShareLandingModalProps> = ({
             <div className="space-y-5 animate-in fade-in duration-150">
               {/* Brand Showcase Card */}
               <div className="p-5 rounded-3xl bg-gradient-to-br from-teal-700 via-teal-800 to-emerald-900 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white/15 border-2 border-white/40 backdrop-blur-md flex items-center justify-center text-4xl sm:text-5xl shadow-2xl shrink-0">
-                  💊
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white p-1 border-2 border-white/60 shadow-2xl shrink-0 overflow-hidden flex items-center justify-center">
+                  <img 
+                    src="/logo.png" 
+                    alt="Seu Horário do Remédio" 
+                    className="w-full h-full object-contain rounded-2xl"
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
                 <div className="space-y-1.5 flex-1">
                   <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider inline-block">

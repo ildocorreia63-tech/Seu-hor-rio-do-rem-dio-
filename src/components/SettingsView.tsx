@@ -750,13 +750,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       )}
 
       {/* About & Medical Disclaimer */}
-      <div className="bg-slate-100 dark:bg-slate-900/60 rounded-3xl p-5 text-center space-y-2 text-xs text-slate-500 dark:text-slate-400">
-        <p className="font-bold text-slate-700 dark:text-slate-300">
-          Seu Horário do Remédio SaaS • Versão 1.0.0
-        </p>
-        <p className="text-[11px] leading-relaxed max-w-sm mx-auto">
-          ⚠️ <strong>Aviso Importante:</strong> Este aplicativo é uma ferramenta de auxílio e organização pessoal. Não substitui a prescrição, diagnóstico ou acompanhamento de profissionais de saúde.
-        </p>
+      <div className="bg-slate-100 dark:bg-slate-900/60 rounded-3xl p-5 text-center space-y-3 text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center">
+        <div className="w-16 h-16 rounded-2xl bg-white p-1 shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <img 
+            src="/logo.png" 
+            alt="Seu Horário do Remédio" 
+            className="w-full h-full object-contain rounded-xl"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <div>
+          <p className="font-bold text-slate-700 dark:text-slate-300">
+            Seu Horário do Remédio SaaS • Versão 1.0.0
+          </p>
+          <p className="text-[11px] leading-relaxed max-w-sm mx-auto mt-1">
+            ⚠️ <strong>Aviso Importante:</strong> Este aplicativo é uma ferramenta de auxílio e organização pessoal. Não substitui a prescrição, diagnóstico ou acompanhamento de profissionais de saúde.
+          </p>
+        </div>
       </div>
     </div>
   );

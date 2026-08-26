@@ -126,27 +126,34 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-30 bg-teal-900 text-white shadow-lg border-b border-teal-950/60">
       <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
-        {/* Logo & App Title - Clickable to open Logomark & Branding panel */}
-        <button
-          onClick={onOpenShareLanding}
-          className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer group focus:outline-none"
-          title="Clique para abrir o Painel de Logomarca e Divulgação"
-        >
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-teal-400 to-teal-700 border border-teal-200/40 flex items-center justify-center text-xl sm:text-2xl shadow-md shrink-0 group-hover:scale-105 group-active:scale-95 transition-transform">
-            💊
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        {/* Logo & App Title */}
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 text-left">
+          <button
+            type="button"
+            onClick={onOpenShareLanding}
+            className="flex items-center gap-2.5 sm:gap-3 min-w-0 text-left cursor-pointer group focus:outline-none"
+            title="Clique para abrir o Painel de Logomarca e Divulgação"
+          >
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white p-0.5 border border-teal-200/40 flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 group-active:scale-95 transition-transform overflow-hidden">
+              <img 
+                src="/logo.png" 
+                alt="Seu Horário do Remédio" 
+                className="w-full h-full object-contain rounded-xl"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div className="min-w-0">
               <h1 className="font-black text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap group-hover:text-teal-200 transition-colors">
                 Seu Horário
               </h1>
-              {getPlanBadge()}
+              <p className="text-xs sm:text-sm text-teal-200 font-semibold truncate leading-tight mt-0.5">
+                {user ? `Olá, ${user.name.split(' ')[0]}` : 'Lembrete Inteligente'}
+              </p>
             </div>
-            <p className="text-xs sm:text-sm text-teal-200 font-semibold truncate leading-tight mt-0.5">
-              {user ? `Olá, ${user.name.split(' ')[0]}` : 'Lembrete Inteligente de Remédios'}
-            </p>
-          </div>
-        </button>
+          </button>
+
+          {getPlanBadge()}
+        </div>
 
         {/* Action icons & User Menu */}
         <div className="flex items-center gap-2 shrink-0" ref={menuRef}>

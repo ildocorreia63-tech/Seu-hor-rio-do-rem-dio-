@@ -113,8 +113,13 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
       {/* Hero Presentation Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-800 to-emerald-950 text-white p-6 sm:p-8 shadow-2xl border border-teal-700/50">
         <div className="relative z-10 flex flex-col items-center text-center space-y-3">
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-3xl shadow-xl shadow-teal-950/50 border border-teal-200/50 transform -rotate-3 hover:rotate-0 transition">
-            💊
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white p-1.5 shadow-2xl shadow-teal-950/60 border-2 border-teal-200/60 transition transform hover:scale-105 overflow-hidden">
+            <img 
+              src="/logo.png" 
+              alt="Seu Horário do Remédio - Logo Oficial" 
+              className="w-full h-full object-contain rounded-2xl"
+              referrerPolicy="no-referrer"
+            />
           </div>
           
           <div>

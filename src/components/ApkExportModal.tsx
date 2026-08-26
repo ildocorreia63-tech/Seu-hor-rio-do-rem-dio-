@@ -114,8 +114,13 @@ export const ApkExportModal: React.FC<ApkExportModalProps> = ({ onClose }) => {
           {activeTab === 'pwa' && (
             <div className="space-y-4">
               <div className="p-4 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 rounded-2xl flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-teal-600 text-white flex items-center justify-center text-2xl shrink-0">
-                  📱
+                <div className="w-12 h-12 rounded-xl bg-white p-0.5 border border-teal-200 shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+                  <img 
+                    src="/logo.png" 
+                    alt="Seu Horário do Remédio" 
+                    className="w-full h-full object-contain rounded-lg"
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-teal-950 dark:text-teal-100">
