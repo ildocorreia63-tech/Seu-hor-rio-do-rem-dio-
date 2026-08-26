@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, FamilyMember } from '../types';
 import { audio } from '../services/audio';
+import { AppLogo } from './AppLogo';
 import { 
   Sparkles, 
   Settings, 
@@ -76,12 +77,13 @@ export const Header: React.FC<HeaderProps> = ({
     if (user.role === 'admin') {
       return (
         <button
+          type="button"
           onClick={onOpenSaasMetrics || onOpenPricing}
-          className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-400/30 text-amber-300 border border-amber-400/70 rounded-full text-xs font-black hover:bg-amber-400/40 transition shadow-sm shrink-0"
+          className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-400/30 text-amber-300 border border-amber-400/70 rounded-full text-[10px] sm:text-xs font-black hover:bg-amber-400/40 transition shadow-sm shrink-0 whitespace-nowrap"
           title="Administrador Master do SaaS"
         >
-          <Crown className="w-3.5 h-3.5 text-amber-400" />
-          <span>ADMIN MASTER</span>
+          <Crown className="w-3 h-3 text-amber-400 shrink-0" />
+          <span>ADMIN</span>
         </button>
       );
     }
@@ -89,11 +91,12 @@ export const Header: React.FC<HeaderProps> = ({
       case 'family':
         return (
           <button
+            type="button"
             onClick={onOpenPricing}
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-400/25 text-amber-300 border border-amber-400/60 rounded-full text-xs font-black hover:bg-amber-400/35 transition shadow-sm shrink-0"
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-400/25 text-amber-300 border border-amber-400/60 rounded-full text-[10px] sm:text-xs font-black hover:bg-amber-400/35 transition shadow-sm shrink-0 whitespace-nowrap"
             title="Plano Família VIP Ativo"
           >
-            <Crown className="w-3.5 h-3.5 text-amber-400" />
+            <Crown className="w-3 h-3 text-amber-400 shrink-0" />
             <span>FAMÍLIA</span>
           </button>
         );
@@ -101,23 +104,25 @@ export const Header: React.FC<HeaderProps> = ({
       case 'pro_yearly':
         return (
           <button
+            type="button"
             onClick={onOpenPricing}
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-400/25 text-emerald-300 border border-emerald-400/60 rounded-full text-xs font-black hover:bg-emerald-400/35 transition shadow-sm shrink-0"
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-400/25 text-emerald-300 border border-emerald-400/60 rounded-full text-[10px] sm:text-xs font-black hover:bg-emerald-400/35 transition shadow-sm shrink-0 whitespace-nowrap"
             title="Plano Pro Ativo"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
             <span>PRO</span>
           </button>
         );
       default:
         return (
           <button
+            type="button"
             onClick={onOpenPricing}
-            className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-800/80 text-slate-200 border border-slate-600 rounded-full text-xs font-bold hover:bg-slate-700 transition shrink-0"
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-800/80 text-slate-200 border border-slate-600 rounded-full text-[10px] sm:text-xs font-bold hover:bg-slate-700 transition shrink-0 whitespace-nowrap"
             title="Clique para assinar o Pro"
           >
             <span>GRÁTIS</span>
-            <span className="text-teal-300 font-extrabold ml-0.5 hidden xs:inline">Upgrade</span>
+            <span className="text-teal-300 font-extrabold hidden xs:inline">Upgrade</span>
           </button>
         );
     }
@@ -125,38 +130,36 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 bg-teal-900 text-white shadow-lg border-b border-teal-950/60">
-      <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
         {/* Logo & App Title */}
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 text-left">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 text-left">
           <button
             type="button"
             onClick={onOpenShareLanding}
-            className="flex items-center gap-2.5 sm:gap-3 min-w-0 text-left cursor-pointer group focus:outline-none"
+            className="flex items-center gap-2 sm:gap-2.5 min-w-0 text-left cursor-pointer group focus:outline-none"
             title="Clique para abrir o Painel de Logomarca e Divulgação"
           >
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white p-0.5 border border-teal-200/40 flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 group-active:scale-95 transition-transform overflow-hidden">
-              <img 
-                src="/logo.png" 
-                alt="Seu Horário do Remédio" 
-                className="w-full h-full object-contain rounded-xl"
-                referrerPolicy="no-referrer"
-              />
-            </div>
+            <AppLogo size="sm" className="group-hover:scale-105 group-active:scale-95 transition-transform" />
             <div className="min-w-0">
-              <h1 className="font-black text-base sm:text-lg tracking-tight leading-tight whitespace-nowrap group-hover:text-teal-200 transition-colors">
-                Seu Horário
-              </h1>
-              <p className="text-xs sm:text-sm text-teal-200 font-semibold truncate leading-tight mt-0.5">
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-black text-sm sm:text-base tracking-tight leading-tight whitespace-nowrap group-hover:text-teal-200 transition-colors">
+                  Seu Horário
+                </h1>
+              </div>
+              <p className="text-[11px] sm:text-xs text-teal-200 font-semibold truncate leading-tight mt-0.5">
                 {user ? `Olá, ${user.name.split(' ')[0]}` : 'Lembrete Inteligente'}
               </p>
             </div>
           </button>
 
-          {getPlanBadge()}
+          {/* Plan badge placed safely next to brand button */}
+          <div className="shrink-0">
+            {getPlanBadge()}
+          </div>
         </div>
 
         {/* Action icons & User Menu */}
-        <div className="flex items-center gap-2 shrink-0" ref={menuRef}>
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0" ref={menuRef}>
           {/* Quick Font Size Zoom Button for Seniors */}
           {onToggleFontSize && (
             <button

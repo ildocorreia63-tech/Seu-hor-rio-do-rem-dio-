@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, SavedAccount } from '../types';
 import { api } from '../services/api';
+import { AppLogo } from './AppLogo';
 import { 
   X, User as UserIcon, Lock, Mail, LogIn, UserPlus, LogOut, CheckCircle2, 
   Zap, Eye, EyeOff, Users, Building2, ShieldCheck, ArrowRightLeft, 
@@ -132,14 +133,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Header */}
         <div className="px-5 sm:px-6 py-4 bg-gradient-to-r from-teal-800 to-teal-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-white p-0.5 border border-teal-200/50 flex items-center justify-center shadow-md shrink-0 overflow-hidden">
-              <img 
-                src="/logo.png" 
-                alt="Seu Horário do Remédio" 
-                className="w-full h-full object-contain rounded-xl"
-                referrerPolicy="no-referrer"
-              />
-            </div>
+            <AppLogo size="sm" className="border-teal-200/50 shadow-md shrink-0" />
             <div className="min-w-0">
               <h2 className="font-black text-base sm:text-lg flex items-center gap-2 leading-tight">
                 <span className="truncate">Seu Horário do Remédio</span>
