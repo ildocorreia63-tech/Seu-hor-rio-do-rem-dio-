@@ -24,15 +24,15 @@ export const AppLogo: React.FC<AppLogoProps> = ({
 
   return (
     <div
-      className={`relative shrink-0 flex items-center justify-center bg-white p-0.5 border border-teal-200/50 overflow-hidden ${
-        showShadow ? 'shadow-md' : ''
+      className={`relative shrink-0 flex items-center justify-center bg-white overflow-hidden ${
+        showShadow ? 'shadow-md shadow-slate-900/10' : ''
       } ${sizeClasses[size]} ${className}`}
     >
       {!hasError ? (
         <img
           src={appLogo}
           alt="Seu Horário do Remédio"
-          className="w-full h-full object-contain select-none"
+          className="w-full h-full object-cover select-none"
           loading="eager"
           onError={() => setHasError(true)}
         />
