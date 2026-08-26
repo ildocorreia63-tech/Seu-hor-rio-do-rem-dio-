@@ -113,8 +113,8 @@ export const WelcomeAuthView: React.FC<WelcomeAuthViewProps> = ({
       
       {/* Hero Presentation Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-800 to-emerald-950 text-white p-6 sm:p-8 shadow-2xl border border-teal-700/50">
-        <div className="relative z-10 flex flex-col items-center text-center space-y-3">
-          <AppLogo size="xl" className="border-2 border-teal-200/60 shadow-2xl hover:scale-105 transition-transform" />
+        <div className="relative z-10 flex flex-col items-center text-center space-y-4">
+          <AppLogo size="xl" className="shadow-2xl hover:scale-105 transition-transform" />
           
           <div>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-400/20 text-teal-200 border border-teal-300/30 text-xs font-black uppercase tracking-wider mb-2">
